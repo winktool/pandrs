@@ -9,6 +9,10 @@ use std::collections::HashMap;
 // Optimized Python integration module
 mod py_optimized;
 
+// GPU acceleration module
+#[cfg(feature = "cuda")]
+mod py_gpu;
+
 /// A Rust-powered DataFrame implementation with pandas-like API
 #[pymodule]
 fn pandrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -16,13 +20,17 @@ fn pandrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyDataFrame>()?;
     m.add_class::<PySeries>()?;
     m.add_class::<PyNASeries>()?;
-    
+
     // Register optimized classes
     py_optimized::register_optimized_types(m)?;
-    
+
+    // Register GPU acceleration classes if CUDA is enabled
+    #[cfg(feature = "cuda")]
+    py_gpu::register(m.py(), m)?;
+
     // Add module version
     m.setattr("__version__", "0.1.0")?;
-    
+
     Ok(())
 }
 

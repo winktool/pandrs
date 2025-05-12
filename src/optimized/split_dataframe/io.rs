@@ -8,25 +8,43 @@ use std::collections::HashMap;
 use super::core::OptimizedDataFrame;
 use crate::column::{Column, ColumnTrait, ColumnType, Int64Column, Float64Column, StringColumn, BooleanColumn};
 use crate::error::{Error, Result};
+
+#[cfg(feature = "sql")]
+use rusqlite::{Connection, params};
 use crate::index::{DataFrameIndex, Index, IndexTrait};
 
 use std::sync::Arc;
 
-use calamine::{open_workbook, Reader, Xlsx};
 use csv::{ReaderBuilder, Writer};
+
+#[cfg(feature = "sql")]
 use rusqlite::{Connection, params};
-use arrow::array::{Array, ArrayRef, BooleanArray, Float64Array, Int64Array, StringArray};
-use arrow::datatypes::{DataType, Field, Schema};
-use arrow::record_batch::RecordBatch;
-use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-use parquet::arrow::arrow_writer::ArrowWriter;
-use parquet::basic::Compression;
-use parquet::file::properties::WriterProperties;
+
+#[cfg(feature = "excel")]
+use calamine::{open_workbook, Reader, Xlsx};
+
+#[cfg(feature = "excel")]
 use simple_excel_writer::{Workbook, Sheet};
+
+#[cfg(feature = "parquet")]
+use arrow::array::{Array, ArrayRef, BooleanArray, Float64Array, Int64Array, StringArray};
+#[cfg(feature = "parquet")]
+use arrow::datatypes::{DataType, Field, Schema};
+#[cfg(feature = "parquet")]
+use arrow::record_batch::RecordBatch;
+#[cfg(feature = "parquet")]
+use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+#[cfg(feature = "parquet")]
+use parquet::arrow::arrow_writer::ArrowWriter;
+#[cfg(feature = "parquet")]
+use parquet::basic::Compression;
+#[cfg(feature = "parquet")]
+use parquet::file::properties::WriterProperties;
 
 // The following are already imported in lines 8-10
 
 /// Enumeration of Parquet compression options
+#[cfg(feature = "parquet")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParquetCompression {
     None,
@@ -38,6 +56,7 @@ pub enum ParquetCompression {
     Zstd,
 }
 
+#[cfg(feature = "parquet")]
 impl From<ParquetCompression> for Compression {
     fn from(comp: ParquetCompression) -> Self {
         match comp {
@@ -256,6 +275,7 @@ impl OptimizedDataFrame {
     ///
     /// # Returns
     /// * `Result<()>` - Ok if successful
+    #[cfg(feature = "parquet")]
     pub fn to_parquet<P: AsRef<Path>>(&self, path: P, compression: Option<ParquetCompression>) -> Result<()> {
         // Write even if there are no rows, as an empty DataFrame
         
@@ -359,6 +379,7 @@ impl OptimizedDataFrame {
     ///
     /// # Returns
     /// * `Result<Self>` - The loaded DataFrame
+    #[cfg(feature = "parquet")]
     pub fn from_parquet<P: AsRef<Path>>(path: P) -> Result<Self> {
         // Open file
         let file = File::open(path.as_ref())
@@ -509,6 +530,7 @@ impl OptimizedDataFrame {
     ///
     /// # Returns
     /// * `Result<Self>` - The loaded DataFrame
+    #[cfg(feature = "excel")]
     pub fn from_excel<P: AsRef<Path>>(
         path: P, 
         sheet_name: Option<&str>,
@@ -672,6 +694,7 @@ impl OptimizedDataFrame {
     ///
     /// # Returns
     /// * `Result<()>` - Ok if successful
+    #[cfg(feature = "excel")]
     pub fn to_excel<P: AsRef<Path>>(
         &self,
         path: P,
@@ -781,6 +804,7 @@ impl OptimizedDataFrame {
     ///
     /// # Returns
     /// * `Result<Self>` - DataFrame containing query results
+    #[cfg(feature = "sql")]
     pub fn from_sql<P: AsRef<Path>>(query: &str, db_path: P) -> Result<Self> {
         // Connect to database
         let conn = Connection::open(db_path)
@@ -906,6 +930,7 @@ impl OptimizedDataFrame {
     ///
     /// # Returns
     /// * `Result<()>` - Ok if successful
+    #[cfg(feature = "sql")]
     pub fn to_sql<P: AsRef<Path>>(&self, table_name: &str, db_path: P, if_exists: &str) -> Result<()> {
         // Connect to database
         let mut conn = Connection::open(db_path)
@@ -1020,6 +1045,7 @@ impl OptimizedDataFrame {
     }
     
     // Helper method to create SQLite table from DataFrame
+    #[cfg(feature = "sql")]
     fn create_table_from_df(&self, conn: &Connection, table_name: &str) -> Result<()> {
         // Create list of column names and types
         let mut columns = Vec::new();

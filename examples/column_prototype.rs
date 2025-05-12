@@ -67,7 +67,7 @@ impl Int64Column {
         if self.data.is_empty() {
             return 0;
         }
-        
+
         // Optimized sum calculation
         self.data.iter().sum()
     }
@@ -77,7 +77,7 @@ impl Int64Column {
         if self.data.is_empty() {
             return None;
         }
-        
+
         let sum: i64 = self.sum();
         Some(sum as f64 / self.len() as f64)
     }
@@ -142,7 +142,7 @@ impl Float64Column {
         if self.data.is_empty() {
             return 0.0;
         }
-        
+
         // Optimized sum calculation
         self.data.iter().sum()
     }
@@ -152,7 +152,7 @@ impl Float64Column {
         if self.data.is_empty() {
             return None;
         }
-        
+
         let sum: f64 = self.sum();
         Some(sum / self.len() as f64)
     }
@@ -204,7 +204,7 @@ impl StringPool {
         if let Some(&idx) = self.hash_map.get(&s) {
             return idx;
         }
-        
+
         let idx = self.strings.len() as u32;
         self.strings.push(s.clone());
         self.hash_map.insert(s, idx);
@@ -231,10 +231,8 @@ pub struct StringColumn {
 impl StringColumn {
     pub fn new(data: Vec<String>) -> Self {
         let mut pool = StringPool::new();
-        let indices: Vec<u32> = data.iter()
-            .map(|s| pool.get_or_insert(s))
-            .collect();
-        
+        let indices: Vec<u32> = data.iter().map(|s| pool.get_or_insert(s)).collect();
+
         Self {
             string_pool: Arc::new(pool),
             indices: indices.into(),
@@ -248,8 +246,9 @@ impl StringColumn {
         self
     }
 
-    pub fn values<'a>(&'a self) -> impl Iterator<Item = &'a str> + 'a {
-        self.indices.iter()
+    pub fn values(&self) -> impl Iterator<Item = &str> {
+        self.indices
+            .iter()
             .filter_map(move |&idx| self.string_pool.get(idx))
     }
 }
@@ -390,15 +389,19 @@ impl OptimizedDataFrame {
     }
 
     // Add column
-    pub fn add_column<C: Into<Column>>(&mut self, name: impl Into<String>, column: C) -> Result<(), String> {
+    pub fn add_column<C: Into<Column>>(
+        &mut self,
+        name: impl Into<String>,
+        column: C,
+    ) -> Result<(), String> {
         let name = name.into();
         let column = column.into();
-        
+
         // Check for duplicate column names
         if self.column_indices.contains_key(&name) {
             return Err(format!("Column name '{}' already exists", name));
         }
-        
+
         // Check for row count consistency
         let column_len = column.len();
         if !self.columns.is_empty() && column_len != self.row_count() {
@@ -408,13 +411,13 @@ impl OptimizedDataFrame {
                 self.row_count()
             ));
         }
-        
+
         // Add column
         let column_idx = self.columns.len();
         self.columns.push(column);
         self.column_indices.insert(name.clone(), column_idx);
         self.column_names.push(name);
-        
+
         Ok(())
     }
 
@@ -464,19 +467,19 @@ impl OptimizedDataFrame {
 #[allow(dead_code)]
 fn demonstrate_vector_operations() {
     println!("=== Optimized Performance Comparison of Vector Operations ===");
-    
+
     // Large data
     let n = 10_000_000;
     let int_data: Vec<i64> = (0..n).collect();
     let float_data: Vec<f64> = (0..n).map(|i| i as f64 * 0.5).collect();
-    
+
     // Optimized column operations
     let start = Instant::now();
     let int_col = Int64Column::new(int_data.clone());
     let sum1 = int_col.sum();
     let mean1 = int_col.mean().unwrap();
     let optimized_duration = start.elapsed();
-    
+
     // Simple vector operations (traditional loop-based)
     let start = Instant::now();
     let mut sum2 = 0i64;
@@ -487,19 +490,28 @@ fn demonstrate_vector_operations() {
     }
     let mean2 = sum2 as f64 / count as f64;
     let simple_duration = start.elapsed();
-    
+
     println!("Integer Vector (length = {})", n);
-    println!("  Optimized Column: Total Time = {:?}, Sum = {}, Mean = {:.2}", optimized_duration, sum1, mean1);
-    println!("  Simple Loop: Total Time = {:?}, Sum = {}, Mean = {:.2}", simple_duration, sum2, mean2);
-    println!("  Speedup: {:.2}x", simple_duration.as_secs_f64() / optimized_duration.as_secs_f64());
-    
+    println!(
+        "  Optimized Column: Total Time = {:?}, Sum = {}, Mean = {:.2}",
+        optimized_duration, sum1, mean1
+    );
+    println!(
+        "  Simple Loop: Total Time = {:?}, Sum = {}, Mean = {:.2}",
+        simple_duration, sum2, mean2
+    );
+    println!(
+        "  Speedup: {:.2}x",
+        simple_duration.as_secs_f64() / optimized_duration.as_secs_f64()
+    );
+
     // Floating-point case
     let start = Instant::now();
     let float_col = Float64Column::new(float_data.clone());
     let sum1 = float_col.sum();
     let mean1 = float_col.mean().unwrap();
     let optimized_duration = start.elapsed();
-    
+
     // Simple vector operations
     let start = Instant::now();
     let mut sum2 = 0.0f64;
@@ -510,43 +522,75 @@ fn demonstrate_vector_operations() {
     }
     let mean2 = sum2 / count as f64;
     let simple_duration = start.elapsed();
-    
+
     println!("\nFloating-Point Vector (length = {})", n);
-    println!("  Optimized Column: Total Time = {:?}, Sum = {:.2}, Mean = {:.2}", optimized_duration, sum1, mean1);
-    println!("  Simple Loop: Total Time = {:?}, Sum = {:.2}, Mean = {:.2}", simple_duration, sum2, mean2);
-    println!("  Speedup: {:.2}x", simple_duration.as_secs_f64() / optimized_duration.as_secs_f64());
+    println!(
+        "  Optimized Column: Total Time = {:?}, Sum = {:.2}, Mean = {:.2}",
+        optimized_duration, sum1, mean1
+    );
+    println!(
+        "  Simple Loop: Total Time = {:?}, Sum = {:.2}, Mean = {:.2}",
+        simple_duration, sum2, mean2
+    );
+    println!(
+        "  Speedup: {:.2}x",
+        simple_duration.as_secs_f64() / optimized_duration.as_secs_f64()
+    );
 }
 
 #[allow(dead_code)]
 fn demonstrate_string_pooling() {
     println!("\n=== Memory Efficiency Comparison of String Pooling ===");
-    
+
     // Generate string data with many duplicates
     let n = 1_000_000;
-    let unique_strings = ["Red", "Green", "Blue", "Yellow", "Black", "White", "Orange", "Purple", "Brown", "Gray"];
+    let unique_strings = [
+        "Red", "Green", "Blue", "Yellow", "Black", "White", "Orange", "Purple", "Brown", "Gray",
+    ];
     let string_data: Vec<String> = (0..n)
         .map(|i| unique_strings[i % unique_strings.len()].to_string())
         .collect();
-    
+
     // Estimate memory usage (simple string vector)
-    let simple_size = string_data.iter().map(|s| s.capacity() + std::mem::size_of::<String>()).sum::<usize>();
-    
+    let simple_size = string_data
+        .iter()
+        .map(|s| s.capacity() + std::mem::size_of::<String>())
+        .sum::<usize>();
+
     // Column with string pool
     let start = Instant::now();
     let string_col = StringColumn::new(string_data.clone());
     let string_pool_creation = start.elapsed();
-    
+
     // Estimate memory size of string pool
-    let pool_unique_strings_size = string_col.string_pool.strings.iter().map(|s| s.capacity() + std::mem::size_of::<String>()).sum::<usize>();
+    let pool_unique_strings_size = string_col
+        .string_pool
+        .strings
+        .iter()
+        .map(|s| s.capacity() + std::mem::size_of::<String>())
+        .sum::<usize>();
     let indices_size = string_col.indices.len() * std::mem::size_of::<u32>();
     let pool_size = pool_unique_strings_size + indices_size;
-    
-    println!("String Data (length = {}, unique values = {})", n, unique_strings.len());
-    println!("  Simple Vector: Memory Usage ≈ {:.2} MB", simple_size as f64 / 1024.0 / 1024.0);
-    println!("  String Pool: Memory Usage ≈ {:.2} MB", pool_size as f64 / 1024.0 / 1024.0);
-    println!("  Memory Reduction: {:.2}x", simple_size as f64 / pool_size as f64);
+
+    println!(
+        "String Data (length = {}, unique values = {})",
+        n,
+        unique_strings.len()
+    );
+    println!(
+        "  Simple Vector: Memory Usage ≈ {:.2} MB",
+        simple_size as f64 / 1024.0 / 1024.0
+    );
+    println!(
+        "  String Pool: Memory Usage ≈ {:.2} MB",
+        pool_size as f64 / 1024.0 / 1024.0
+    );
+    println!(
+        "  Memory Reduction: {:.2}x",
+        simple_size as f64 / pool_size as f64
+    );
     println!("  Pool Creation Time: {:?}", string_pool_creation);
-    
+
     // Compare access speed
     let start = Instant::now();
     let mut _simple_count = 0;
@@ -556,7 +600,7 @@ fn demonstrate_string_pooling() {
         }
     }
     let simple_duration = start.elapsed();
-    
+
     let start = Instant::now();
     let mut _pooled_count = 0;
     for s in string_col.values() {
@@ -565,55 +609,62 @@ fn demonstrate_string_pooling() {
         }
     }
     let pooled_duration = start.elapsed();
-    
+
     println!("  Simple Vector Search Time: {:?}", simple_duration);
     println!("  Pooled Vector Search Time: {:?}", pooled_duration);
-    println!("  Search Speedup: {:.2}x", simple_duration.as_secs_f64() / pooled_duration.as_secs_f64());
+    println!(
+        "  Search Speedup: {:.2}x",
+        simple_duration.as_secs_f64() / pooled_duration.as_secs_f64()
+    );
 }
 
 #[allow(dead_code)]
 fn demonstrate_dataframe_operations() {
     println!("\n=== Optimized DataFrame Demo ===");
-    
+
     // Create optimized DataFrame
     let mut df = OptimizedDataFrame::new();
-    
+
     // Add columns
     let n = 1_000_000;
-    
+
     let start = Instant::now();
     let int_col = Int64Column::new((0..n).collect()).with_name("id");
     let float_col = Float64Column::new((0..n).map(|i| i as f64 * 0.5).collect()).with_name("value");
-    
+
     // String column (categorical data)
     let categories = ["A", "B", "C", "D", "E"];
     let string_data: Vec<String> = (0..n)
         .map(|i| categories[i as usize % categories.len()].to_string())
         .collect();
-    
+
     let string_col = StringColumn::new(string_data).with_name("category");
-    
+
     // Add columns to DataFrame
     df.add_column("id", int_col).unwrap();
     df.add_column("value", float_col).unwrap();
     df.add_column("category", string_col).unwrap();
-    
+
     let creation_time = start.elapsed();
-    
-    println!("Optimized DataFrame ({} rows x {} columns)", df.row_count(), df.column_count());
+
+    println!(
+        "Optimized DataFrame ({} rows x {} columns)",
+        df.row_count(),
+        df.column_count()
+    );
     println!("  Column Names: {:?}", df.column_names());
     println!("  Creation Time: {:?}", creation_time);
-    
+
     // Type-safe column access
     let start = Instant::now();
     let id_col = df.get_int64_column("id").unwrap();
     let id_sum = id_col.sum();
-    
+
     let value_col = df.get_float64_column("value").unwrap();
     let value_mean = value_col.mean().unwrap();
-    
+
     let access_time = start.elapsed();
-    
+
     println!("  Sum of 'id' column: {}", id_sum);
     println!("  Mean of 'value' column: {:.2}", value_mean);
     println!("  Access and Calculation Time: {:?}", access_time);

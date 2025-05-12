@@ -287,8 +287,12 @@ impl ColumnTrait for StringColumn {
         self.name.as_deref()
     }
     
-    fn clone_column(&self) -> Column {
-        Column::String(self.clone())
+    fn clone_column(&self) -> crate::core::column::Column {
+        // Convert the legacy Column type to the core Column type
+        let legacy_column = Column::String(self.clone());
+        // This is a temporary workaround - in a complete solution,
+        // we would implement proper conversion between column types
+        crate::core::column::Column::from_any(Box::new(legacy_column))
     }
     
     fn as_any(&self) -> &dyn Any {

@@ -1,7 +1,8 @@
+use pandrs::error::Result;
 use pandrs::pivot::AggFunction;
-use pandrs::{DataFrame, PandRSError, Series};
+use pandrs::{DataFrame, Series};
 
-fn main() -> Result<(), PandRSError> {
+fn main() -> Result<()> {
     println!("=== Pivot Table and Grouping Example ===");
 
     // Create sample data

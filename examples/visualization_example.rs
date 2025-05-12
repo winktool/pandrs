@@ -1,7 +1,21 @@
-use pandrs::{DataFrame, OutputFormat, PlotConfig, PlotType, Series};
-use std::error::Error;
+#[cfg(feature = "visualization")]
+use pandrs::error::Result;
+#[cfg(feature = "visualization")]
+use pandrs::vis::direct::{DataFramePlotExt, SeriesPlotExt};
+#[cfg(feature = "visualization")]
+use pandrs::vis::PlotKind;
+#[cfg(feature = "visualization")]
+use pandrs::{DataFrame, Series};
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[cfg(not(feature = "visualization"))]
+fn main() {
+    println!("This example requires the 'visualization' feature flag to be enabled.");
+    println!("Please recompile with:");
+    println!("  cargo run --example visualization_example --features visualization");
+}
+
+#[cfg(feature = "visualization")]
+fn main() -> Result<()> {
     println!("=== Visualization Example ===\n");
 
     // Create sample data
@@ -12,67 +26,37 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Clone before adding to DataFrame
     let y_for_plot = y.clone();
 
-    // Plot Series - Terminal Output
-    let config = PlotConfig {
-        title: "Sample Series Plot".to_string(),
-        x_label: "Index".to_string(),
-        y_label: "Value".to_string(),
-        width: 80,
-        height: 25,
-        plot_type: PlotType::Line,
-        format: OutputFormat::Terminal,
-    };
-
-    println!("Plotting y series:");
-    y_for_plot.plot("", config.clone())?;
-
-    // Plot Scatter
-    let scatter_config = PlotConfig {
-        title: "X vs Y Scatter Plot".to_string(),
-        x_label: "X Value".to_string(),
-        y_label: "Y Value".to_string(),
-        plot_type: PlotType::Scatter,
-        ..config.clone()
-    };
-
     // Create DataFrame
     let mut df = DataFrame::new();
     df.add_column("x".to_string(), x)?;
     df.add_column("y".to_string(), y)?;
     df.add_column("z".to_string(), z)?;
 
-    println!("\nPlotting XY Scatter Plot:");
-    df.plot_xy("x", "y", "", scatter_config)?;
+    // Plot Series using terminal
+    println!("Plotting y series (check file 'y_series.png'):");
+    y_for_plot.line_plot("y_series.png", Some("Sample Series Plot"))?;
 
-    // Single Series Line Plot (Text plot has limitations for multiple series)
-    let line_config = PlotConfig {
-        title: "Single Series Plot".to_string(),
-        x_label: "X".to_string(),
-        y_label: "Value".to_string(),
-        plot_type: PlotType::Line,
-        ..config.clone()
-    };
+    // Plot Scatter XY
+    println!("\nPlotting XY Scatter Plot (check file 'xy_scatter.png'):");
+    df.scatter_xy("x", "y", "xy_scatter.png", Some("X vs Y Scatter Plot"))?;
 
-    println!("\nPlotting Line Graph:");
-    df.plot_lines(&["z"], "", line_config)?;
+    // Single Series Line Plot
+    println!("\nPlotting Line Graph (check file 'z_line.png'):");
+    df.line_plot("z", "z_line.png", Some("Z Line Plot"))?;
 
-    // Save as Text File
-    let file_config = PlotConfig {
-        title: "File Output Plot".to_string(),
-        x_label: "Index".to_string(),
-        y_label: "Value".to_string(),
-        plot_type: PlotType::Line,
-        format: OutputFormat::TextFile,
-        ..config.clone()
-    };
+    // Multiple Series Line Plot
+    println!("\nPlotting Multiple Line Graph (check file 'multi_line.png'):");
+    df.multi_line_plot(
+        &["x", "y", "z"],
+        "multi_line.png",
+        Some("Multi-Column Plot"),
+    )?;
 
-    println!("\nSaving plot to file...");
-    let y_from_df = df.get_column_numeric_values("y")?;
-    // Convert f64 to f32
-    let y_f32: Vec<f32> = y_from_df.iter().map(|&val| val as f32).collect();
-    let y_series = Series::new(y_f32, Some("y".to_string()))?;
-    y_series.plot("examples/plot.txt", file_config)?;
-    println!("Plot saved: examples/plot.txt");
+    // Save as SVG format
+    println!("\nSaving plot to SVG (check file 'y_plot.svg'):");
+    let svg_path = "y_plot.svg";
+    df.plot_svg("y", svg_path, PlotKind::Line, Some("Y Series SVG Plot"))?;
+    println!("SVG Plot saved: {}", svg_path);
 
     println!("\n=== Visualization Example Complete ===");
     Ok(())

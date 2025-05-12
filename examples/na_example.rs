@@ -1,6 +1,7 @@
-use pandrs::{NASeries, PandRSError, NA};
+use pandrs::error::Result;
+use pandrs::{NASeries, NA};
 
-fn main() -> Result<(), PandRSError> {
+fn main() -> Result<()> {
     println!("=== Support for NA Values (Missing Data) ===");
 
     // Create data with missing values

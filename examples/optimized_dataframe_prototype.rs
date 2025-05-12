@@ -1,11 +1,24 @@
+#[cfg(feature = "optimized")]
 use std::any::Any;
+#[cfg(feature = "optimized")]
 use std::collections::HashMap;
+#[cfg(feature = "optimized")]
 use std::fmt::Debug;
+#[cfg(feature = "optimized")]
 use std::marker::PhantomData;
+#[cfg(feature = "optimized")]
 use std::sync::Arc;
+
+#[cfg(not(feature = "optimized"))]
+fn main() {
+    println!("This example requires the 'optimized' feature flag to be enabled.");
+    println!("Please recompile with:");
+    println!("  cargo run --example optimized_dataframe_prototype --features \"optimized\"");
+}
 
 // Translated Japanese comments and strings into English
 // Trait for type-erased data columns
+#[cfg(feature = "optimized")]
 trait ColumnData: Debug + Send + Sync {
     fn as_any(&self) -> &dyn Any;
     fn len(&self) -> usize;
@@ -14,6 +27,7 @@ trait ColumnData: Debug + Send + Sync {
 }
 
 // Data column with a specific type
+#[cfg(feature = "optimized")]
 #[derive(Debug)]
 #[allow(dead_code)]
 struct TypedColumn<T: Clone + Debug + Send + Sync + 'static> {
@@ -21,6 +35,7 @@ struct TypedColumn<T: Clone + Debug + Send + Sync + 'static> {
     _phantom: PhantomData<T>,
 }
 
+#[cfg(feature = "optimized")]
 impl<T: Clone + Debug + Send + Sync + 'static> TypedColumn<T> {
     #[allow(dead_code)]
     fn new(data: Vec<T>) -> Self {
@@ -31,6 +46,7 @@ impl<T: Clone + Debug + Send + Sync + 'static> TypedColumn<T> {
     }
 }
 
+#[cfg(feature = "optimized")]
 impl<T: Clone + Debug + Send + Sync + 'static> ColumnData for TypedColumn<T> {
     fn as_any(&self) -> &dyn Any {
         self
@@ -49,11 +65,13 @@ impl<T: Clone + Debug + Send + Sync + 'static> ColumnData for TypedColumn<T> {
 }
 
 // Specialized column implementation for integers
+#[cfg(feature = "optimized")]
 #[derive(Debug)]
 struct IntColumn {
     data: Vec<i64>,
 }
 
+#[cfg(feature = "optimized")]
 impl IntColumn {
     fn new(data: Vec<i64>) -> Self {
         Self { data }
@@ -73,6 +91,7 @@ impl IntColumn {
     }
 }
 
+#[cfg(feature = "optimized")]
 impl ColumnData for IntColumn {
     fn as_any(&self) -> &dyn Any {
         self
@@ -90,11 +109,13 @@ impl ColumnData for IntColumn {
 }
 
 // Specialized column implementation for floating-point numbers
+#[cfg(feature = "optimized")]
 #[derive(Debug)]
 struct FloatColumn {
     data: Vec<f64>,
 }
 
+#[cfg(feature = "optimized")]
 impl FloatColumn {
     fn new(data: Vec<f64>) -> Self {
         Self { data }
@@ -114,6 +135,7 @@ impl FloatColumn {
     }
 }
 
+#[cfg(feature = "optimized")]
 impl ColumnData for FloatColumn {
     fn as_any(&self) -> &dyn Any {
         self
@@ -131,12 +153,14 @@ impl ColumnData for FloatColumn {
 }
 
 // Optimized string column using a string pool
+#[cfg(feature = "optimized")]
 #[derive(Debug)]
 struct StringColumn {
     // Vector of string references
     data: Vec<Arc<String>>,
 }
 
+#[cfg(feature = "optimized")]
 impl StringColumn {
     fn new(data: Vec<String>) -> Self {
         // In a real implementation, a string pool would be used
@@ -145,6 +169,7 @@ impl StringColumn {
     }
 }
 
+#[cfg(feature = "optimized")]
 impl ColumnData for StringColumn {
     fn as_any(&self) -> &dyn Any {
         self
@@ -162,6 +187,7 @@ impl ColumnData for StringColumn {
 }
 
 // Implementation of an optimized DataFrame
+#[cfg(feature = "optimized")]
 #[derive(Debug)]
 struct OptimizedDataFrame {
     // Column-oriented data storage
@@ -172,6 +198,7 @@ struct OptimizedDataFrame {
     column_names: Vec<String>,
 }
 
+#[cfg(feature = "optimized")]
 impl OptimizedDataFrame {
     fn new() -> Self {
         Self {
@@ -212,13 +239,14 @@ impl OptimizedDataFrame {
 }
 
 // Sample usage
+#[cfg(feature = "optimized")]
 fn main() {
     // Benchmark for creating an optimized DataFrame
     println!("=== Optimized DataFrame Prototype ===\n");
 
     // Test with a large data size
     let size = 1_000_000;
-    
+
     // Add an integer column
     let int_data: Vec<i64> = (0..size).collect();
     let int_column = IntColumn::new(int_data);

@@ -4,34 +4,23 @@
 //! It implements a wide range of statistical methods including descriptive statistics,
 //! inferential statistics, hypothesis testing, and regression analysis.
 
+// Feature modules
 pub mod descriptive;
 pub mod inference;
 pub mod regression;
 pub mod sampling;
+pub mod categorical;
 
+// GPU-accelerated statistical functions (conditionally compiled)
+#[cfg(feature = "cuda")]
+pub mod gpu;
+
+// Re-export public types and functions
 use crate::dataframe::DataFrame;
-use crate::series::Series;
-use crate::error::{Result, Error};
+use crate::error::{Result, Error, PandRSError};
 use std::collections::HashMap;
-
-/// Calculate basic statistics for data
-///
-/// # Description
-/// This function calculates basic descriptive statistics (mean, standard deviation,
-/// minimum, maximum, etc.) for a Series, DataFrame, or other numeric data.
-///
-/// # Example
-/// ```rust
-/// use pandrs::stats;
-///
-/// let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-/// let stats = stats::describe(&data).unwrap();
-/// println!("Mean: {}", stats.mean);
-/// println!("Standard deviation: {}", stats.std);
-/// ```
-pub fn describe<T: AsRef<[f64]>>(data: T) -> Result<DescriptiveStats> {
-    descriptive::describe_impl(data.as_ref())
-}
+use std::fmt::Debug;
+use std::hash::Hash;
 
 /// Structure holding descriptive statistics results
 #[derive(Debug, Clone)]
@@ -52,6 +41,112 @@ pub struct DescriptiveStats {
     pub q3: f64,
     /// Maximum value
     pub max: f64,
+}
+
+/// T-test result
+#[derive(Debug, Clone)]
+pub struct TTestResult {
+    /// t-statistic
+    pub statistic: f64,
+    /// p-value
+    pub pvalue: f64,
+    /// Whether significant at given significance level
+    pub significant: bool,
+    /// Degrees of freedom
+    pub df: usize,
+}
+
+/// Linear regression model results
+#[derive(Debug, Clone)]
+pub struct LinearRegressionResult {
+    /// Intercept
+    pub intercept: f64,
+    /// Coefficients (multiple for multivariate regression)
+    pub coefficients: Vec<f64>,
+    /// Coefficient of determination (R²)
+    pub r_squared: f64,
+    /// Adjusted coefficient of determination
+    pub adj_r_squared: f64,
+    /// p-values for each coefficient
+    pub p_values: Vec<f64>,
+    /// Fitted values
+    pub fitted_values: Vec<f64>,
+    /// Residuals
+    pub residuals: Vec<f64>,
+}
+
+/// One-way ANOVA results
+#[derive(Debug, Clone)]
+pub struct AnovaResult {
+    /// F-statistic
+    pub f_statistic: f64,
+    /// p-value
+    pub p_value: f64,
+    /// Between-groups sum of squares
+    pub ss_between: f64,
+    /// Within-groups sum of squares
+    pub ss_within: f64,
+    /// Total sum of squares
+    pub ss_total: f64,
+    /// Between-groups degrees of freedom
+    pub df_between: usize,
+    /// Within-groups degrees of freedom
+    pub df_within: usize,
+    /// Total degrees of freedom
+    pub df_total: usize,
+    /// Between-groups mean square
+    pub ms_between: f64,
+    /// Within-groups mean square
+    pub ms_within: f64,
+    /// Whether significant at given significance level
+    pub significant: bool,
+}
+
+/// Mann-Whitney U test (non-parametric test) results
+#[derive(Debug, Clone)]
+pub struct MannWhitneyResult {
+    /// U-statistic
+    pub u_statistic: f64,
+    /// p-value
+    pub p_value: f64,
+    /// Whether significant at given significance level
+    pub significant: bool,
+}
+
+/// Chi-square test results
+#[derive(Debug, Clone)]
+pub struct ChiSquareResult {
+    /// Chi-square statistic
+    pub chi2_statistic: f64,
+    /// p-value
+    pub p_value: f64,
+    /// Degrees of freedom
+    pub df: usize,
+    /// Whether significant at given significance level
+    pub significant: bool,
+    /// Expected frequencies
+    pub expected_freq: Vec<Vec<f64>>,
+}
+
+// Public API functions
+
+/// Calculate basic statistics for data
+///
+/// # Description
+/// This function calculates basic descriptive statistics (mean, standard deviation,
+/// minimum, maximum, etc.) for a Series, DataFrame, or other numeric data.
+///
+/// # Example
+/// ```rust
+/// use pandrs::stats;
+///
+/// let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+/// let stats = stats::describe(&data).unwrap();
+/// println!("Mean: {}", stats.mean);
+/// println!("Standard deviation: {}", stats.std);
+/// ```
+pub fn describe<T: AsRef<[f64]>>(data: T) -> Result<DescriptiveStats> {
+    descriptive::describe_impl(data.as_ref())
 }
 
 /// Calculate correlation coefficient
@@ -93,19 +188,6 @@ pub fn covariance<T: AsRef<[f64]>, U: AsRef<[f64]>>(x: T, y: U) -> Result<f64> {
     descriptive::covariance_impl(x.as_ref(), y.as_ref())
 }
 
-/// T-test result
-#[derive(Debug, Clone)]
-pub struct TTestResult {
-    /// t-statistic
-    pub statistic: f64,
-    /// p-value
-    pub pvalue: f64,
-    /// Whether significant at given significance level
-    pub significant: bool,
-    /// Degrees of freedom
-    pub df: usize,
-}
-
 /// Perform two-sample t-test
 ///
 /// # Description
@@ -131,25 +213,6 @@ pub fn ttest<T: AsRef<[f64]>, U: AsRef<[f64]>>(
     equal_var: bool,
 ) -> Result<TTestResult> {
     inference::ttest_impl(sample1.as_ref(), sample2.as_ref(), alpha, equal_var)
-}
-
-/// Linear regression model results
-#[derive(Debug, Clone)]
-pub struct LinearRegressionResult {
-    /// Intercept
-    pub intercept: f64,
-    /// Coefficients (multiple for multivariate regression)
-    pub coefficients: Vec<f64>,
-    /// Coefficient of determination (R²)
-    pub r_squared: f64,
-    /// Adjusted coefficient of determination
-    pub adj_r_squared: f64,
-    /// p-values for each coefficient
-    pub p_values: Vec<f64>,
-    /// Fitted values
-    pub fitted_values: Vec<f64>,
-    /// Residuals
-    pub residuals: Vec<f64>,
 }
 
 /// Perform linear regression analysis
@@ -227,33 +290,6 @@ pub fn bootstrap<T: AsRef<[f64]>>(
     sampling::bootstrap_impl(data.as_ref(), n_samples)
 }
 
-/// One-way ANOVA results
-#[derive(Debug, Clone)]
-pub struct AnovaResult {
-    /// F-statistic
-    pub f_statistic: f64,
-    /// p-value
-    pub p_value: f64,
-    /// Between-groups sum of squares
-    pub ss_between: f64,
-    /// Within-groups sum of squares
-    pub ss_within: f64,
-    /// Total sum of squares
-    pub ss_total: f64,
-    /// Between-groups degrees of freedom
-    pub df_between: usize,
-    /// Within-groups degrees of freedom
-    pub df_within: usize,
-    /// Total degrees of freedom
-    pub df_total: usize,
-    /// Between-groups mean square
-    pub ms_between: f64,
-    /// Within-groups mean square
-    pub ms_within: f64,
-    /// Whether significant at given significance level
-    pub significant: bool,
-}
-
 /// Perform one-way ANOVA
 ///
 /// # Description
@@ -292,17 +328,6 @@ pub fn anova<T: AsRef<[f64]>>(
     inference::anova_impl(&groups_converted, alpha)
 }
 
-/// Mann-Whitney U test (non-parametric test) results
-#[derive(Debug, Clone)]
-pub struct MannWhitneyResult {
-    /// U-statistic
-    pub u_statistic: f64,
-    /// p-value
-    pub p_value: f64,
-    /// Whether significant at given significance level
-    pub significant: bool,
-}
-
 /// Perform Mann-Whitney U test (non-parametric test)
 ///
 /// # Description
@@ -327,21 +352,6 @@ pub fn mann_whitney_u<T: AsRef<[f64]>, U: AsRef<[f64]>>(
     alpha: f64,
 ) -> Result<MannWhitneyResult> {
     inference::mann_whitney_u_impl(sample1.as_ref(), sample2.as_ref(), alpha)
-}
-
-/// Chi-square test results
-#[derive(Debug, Clone)]
-pub struct ChiSquareResult {
-    /// Chi-square statistic
-    pub chi2_statistic: f64,
-    /// p-value
-    pub p_value: f64,
-    /// Degrees of freedom
-    pub df: usize,
-    /// Whether significant at given significance level
-    pub significant: bool,
-    /// Expected frequencies
-    pub expected_freq: Vec<Vec<f64>>,
 }
 
 /// Perform chi-square test
@@ -372,3 +382,170 @@ pub fn chi_square_test(
 ) -> Result<ChiSquareResult> {
     inference::chi_square_test_impl(observed, alpha)
 }
+
+// Categorical data statistical functions
+
+/// ContingencyTable represents a cross-tabulation of categorical data
+pub use categorical::ContingencyTable;
+
+/// Create a contingency table from two categorical columns in a DataFrame
+///
+/// # Description
+/// Creates a contingency table showing the joint distribution of two categorical variables.
+/// The table contains observed frequencies for each combination of categories.
+///
+/// # Example
+/// ```rust,no_run
+/// use pandrs::stats;
+/// use pandrs::dataframe::DataFrame;
+///
+/// let df = DataFrame::new(); // DataFrame with categorical data
+/// let table = stats::contingency_table_from_df(&df, "category1", "category2").unwrap();
+/// println!("Observed frequencies: {:?}", table.observed);
+/// ```
+pub fn contingency_table_from_df(
+    df: &DataFrame,
+    col1: &str,
+    col2: &str,
+) -> Result<ContingencyTable> {
+    categorical::dataframe_contingency_table(df, col1, col2)
+}
+
+/// Calculate chi-square test for independence between two categorical columns
+///
+/// # Description
+/// Tests if there is a significant association between two categorical variables.
+///
+/// # Example
+/// ```rust,no_run
+/// use pandrs::stats;
+/// use pandrs::dataframe::DataFrame;
+///
+/// let df = DataFrame::new(); // DataFrame with categorical data
+/// let result = stats::chi_square_independence(&df, "category1", "category2", 0.05).unwrap();
+/// println!("Chi-square statistic: {}", result.chi2_statistic);
+/// println!("p-value: {}", result.p_value);
+/// println!("Significant association: {}", result.significant);
+/// ```
+pub fn chi_square_independence(
+    df: &DataFrame,
+    col1: &str,
+    col2: &str,
+    alpha: f64,
+) -> Result<ChiSquareResult> {
+    categorical::dataframe_chi_square_test(df, col1, col2, alpha)
+}
+
+/// Calculate Cramer's V measure of association between categorical columns
+///
+/// # Description
+/// Cramer's V is a measure of association between categorical variables, based on chi-square.
+/// It ranges from 0 (no association) to 1 (perfect association).
+///
+/// # Example
+/// ```rust,no_run
+/// use pandrs::stats;
+/// use pandrs::dataframe::DataFrame;
+///
+/// let df = DataFrame::new(); // DataFrame with categorical data
+/// let v = stats::cramers_v_from_df(&df, "category1", "category2").unwrap();
+/// println!("Cramer's V: {}", v);
+/// ```
+pub fn cramers_v_from_df(
+    df: &DataFrame,
+    col1: &str,
+    col2: &str,
+) -> Result<f64> {
+    categorical::dataframe_cramers_v(df, col1, col2)
+}
+
+/// Test association between categorical and numeric variables using ANOVA
+///
+/// # Description
+/// Tests if different categories in a categorical variable have significantly different
+/// mean values in a numeric variable.
+///
+/// # Example
+/// ```rust,no_run
+/// use pandrs::stats;
+/// use pandrs::dataframe::DataFrame;
+///
+/// let df = DataFrame::new(); // DataFrame with categorical and numeric data
+/// let result = stats::categorical_anova_from_df(&df, "category", "numeric_val", 0.05).unwrap();
+/// println!("F-statistic: {}", result.f_statistic);
+/// println!("p-value: {}", result.p_value);
+/// println!("Significant difference: {}", result.significant);
+/// ```
+pub fn categorical_anova_from_df(
+    df: &DataFrame,
+    cat_col: &str,
+    numeric_col: &str,
+    alpha: f64,
+) -> Result<AnovaResult> {
+    categorical::dataframe_categorical_anova(df, cat_col, numeric_col, alpha)
+}
+
+/// Calculate mutual information between categorical variables
+///
+/// # Description
+/// Mutual information measures how much information is shared between two categorical variables.
+/// Higher values indicate stronger association.
+///
+/// # Example
+/// ```rust,no_run
+/// use pandrs::stats;
+/// use pandrs::dataframe::DataFrame;
+///
+/// let df = DataFrame::new(); // DataFrame with categorical data
+/// let nmi = stats::normalized_mutual_info(&df, "category1", "category2").unwrap();
+/// println!("Normalized Mutual Information: {}", nmi);
+/// ```
+pub fn normalized_mutual_info(
+    df: &DataFrame,
+    col1: &str,
+    col2: &str,
+) -> Result<f64> {
+    categorical::dataframe_normalized_mutual_information(df, col1, col2)
+}
+
+// TODO: Re-export functions once they are implemented
+// For now, we'll comment these out since the implementation files might have been reorganized
+
+// Descriptive statistics functions
+// pub use descriptive::variance;
+// pub use descriptive::std_dev;
+// pub use descriptive::quantile;
+// These are probably implemented under different names or in different modules
+pub use descriptive::correlation_impl as correlation_matrix;
+
+// Inference statistics functions
+// pub use inference::one_sample_ttest;
+// pub use inference::paired_ttest;
+
+// Regression functions - using existing functions instead
+pub use regression::linear_regression as simple_linear_regression;
+// pub use regression::polynomial_regression;
+// pub use regression::residual_diagnostics;
+
+// Sampling functions - existing implementation
+pub use sampling::stratified_sample_impl as stratified_sample;
+// pub use sampling::bootstrap_confidence_interval;
+// pub use sampling::systematic_sample;
+// pub use sampling::weighted_sample;
+// pub use sampling::bootstrap_standard_error;
+
+pub use categorical::mode;
+pub use categorical::entropy;
+pub use categorical::frequency_distribution;
+
+// Re-export GPU-accelerated functions when CUDA is enabled
+#[cfg(feature = "cuda")]
+pub use gpu::{
+    describe_gpu,
+    correlation_matrix as gpu_correlation_matrix,
+    covariance_matrix as gpu_covariance_matrix,
+    pca,
+    linear_regression as gpu_linear_regression,
+    feature_importance,
+    kmeans,
+};

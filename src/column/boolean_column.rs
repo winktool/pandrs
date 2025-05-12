@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use std::any::Any;
 
-use crate::column::common::{Column, ColumnTrait, ColumnType, BitMask};
+use crate::column::common::{Column, ColumnTrait, ColumnType};
+use crate::core::column::BitMask;
 use crate::error::{Error, Result};
 
 /// Structure representing a boolean column (optimized with BitMask)
@@ -205,10 +206,14 @@ impl ColumnTrait for BooleanColumn {
         self.name.as_deref()
     }
     
-    fn clone_column(&self) -> Column {
-        Column::Boolean(self.clone())
+    fn clone_column(&self) -> crate::core::column::Column {
+        // Convert the legacy Column type to the core Column type
+        let legacy_column = Column::Boolean(self.clone());
+        // This is a temporary workaround - in a complete solution,
+        // we would implement proper conversion between column types
+        crate::core::column::Column::from_any(Box::new(legacy_column))
     }
-    
+
     fn as_any(&self) -> &dyn Any {
         self
     }

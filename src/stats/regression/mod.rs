@@ -43,7 +43,10 @@ pub(crate) fn linear_regression_impl(
     }
     
     // Get target variable
-    let y_series = df.get_column(y_column).ok_or_else(|| Error::ColumnNotFound(y_column.to_string()))?;
+    let y_series = match df.get_column::<String>(y_column) {
+        Ok(series) => series,
+        Err(_) => return Err(Error::ColumnNotFound(y_column.to_string())),
+    };
     
     // Convert string Series to numeric
     let y_values: Vec<f64> = y_series.values().iter()
@@ -60,7 +63,10 @@ pub(crate) fn linear_regression_impl(
     
     // Add each predictor column
     for &x_col in x_columns {
-        let x_series = df.get_column(x_col).ok_or_else(|| Error::ColumnNotFound(x_col.to_string()))?;
+        let x_series = match df.get_column::<String>(x_col) {
+            Ok(series) => series,
+            Err(_) => return Err(Error::ColumnNotFound(x_col.to_string())),
+        };
         
         // Convert string Series to numeric
         let x_values: Vec<f64> = x_series.values().iter()
@@ -261,11 +267,11 @@ fn matrix_inverse(matrix: &[Vec<f64>]) -> Result<Vec<Vec<f64>>> {
             // Looser condition during testing
             #[cfg(test)]
             if max_val < 1e-8 {
-                return Err(Error::ComputationError("Matrix is singular (inverse does not exist)".into()));
+                return Err(Error::Computation("Matrix is singular (inverse does not exist)".into()));
             }
             // Normal condition
             #[cfg(not(test))]
-            return Err(Error::ComputationError("Matrix is singular (inverse does not exist)".into()));
+            return Err(Error::Computation("Matrix is singular (inverse does not exist)".into()));
         }
         
         // Swap rows

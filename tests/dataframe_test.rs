@@ -60,8 +60,8 @@ fn test_dataframe_column_length_mismatch() {
 
     // Check specific error type
     match result {
-        Err(PandRSError::Consistency(_)) => (),
-        _ => panic!("Expected a Consistency error"),
+        Err(PandRSError::InconsistentRowCount { .. }) => (),
+        _ => panic!("Expected an InconsistentRowCount error"),
     }
 }
 
@@ -82,7 +82,7 @@ fn test_dataframe_duplicate_column() {
 
     // Check specific error type
     match result {
-        Err(PandRSError::Column(_)) => (),
-        _ => panic!("Expected a Column error"),
+        Err(PandRSError::DuplicateColumnName(_)) => (),
+        _ => panic!("Expected a DuplicateColumnName error"),
     }
 }

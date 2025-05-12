@@ -409,9 +409,28 @@ pub(crate) fn chi_square_test_impl(
     
     // Calculate p-value
     let p_value = chi2_to_pvalue(chi2_statistic, df);
-    
+
     Ok(ChiSquareResult {
         chi2_statistic,
+        p_value,
+        df,
+        significant: p_value < alpha,
+        expected_freq: expected,
+    })
+}
+
+/// Chi-square test with pre-calculated statistic
+pub fn chi_square_test_with_statistic(
+    chi2: f64,
+    df: usize,
+    alpha: f64,
+    expected: Vec<Vec<f64>>,
+) -> Result<ChiSquareResult> {
+    // Calculate p-value
+    let p_value = chi2_to_pvalue(chi2, df);
+
+    Ok(ChiSquareResult {
+        chi2_statistic: chi2,
         p_value,
         df,
         significant: p_value < alpha,

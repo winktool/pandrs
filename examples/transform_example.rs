@@ -1,4 +1,5 @@
-use pandrs::{DataFrame, Series, MeltOptions, StackOptions, UnstackOptions};
+use pandrs::dataframe::TransformExt;
+use pandrs::{DataFrame, MeltOptions, Series, StackOptions, UnstackOptions};
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -16,7 +17,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Product category
     df.add_column(
         "category".to_string(),
-        Series::new(vec!["Food", "Electronics", "Clothing"], Some("category".to_string()))?,
+        Series::new(
+            vec!["Food", "Electronics", "Clothing"],
+            Some("category".to_string()),
+        )?,
     )?;
 
     // Monthly sales data
@@ -84,7 +88,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Concatenate DataFrames
     println!("\n----- Concatenate DataFrames (concat) -----");
-    
+
     // Create additional DataFrame
     let mut df2 = DataFrame::new();
     df2.add_column(
@@ -93,7 +97,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
     df2.add_column(
         "category".to_string(),
-        Series::new(vec!["Stationery", "Furniture"], Some("category".to_string()))?,
+        Series::new(
+            vec!["Stationery", "Furniture"],
+            Some("category".to_string()),
+        )?,
     )?;
     df2.add_column(
         "January".to_string(),
@@ -118,7 +125,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Conditional aggregation
     println!("\n----- Conditional Aggregation -----");
-    
+
     // Condition: Calculate the total sales for March by category, only for rows where February sales are 1000 or more
     let result = df.conditional_aggregate(
         "category",
@@ -132,10 +139,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             false
         },
         |values| {
-            let sum: i32 = values
-                .iter()
-                .filter_map(|v| v.parse::<i32>().ok())
-                .sum();
+            let sum: i32 = values.iter().filter_map(|v| v.parse::<i32>().ok()).sum();
             sum.to_string()
         },
     )?;

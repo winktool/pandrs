@@ -1,6 +1,6 @@
 [package]
 name = "pandrs-python"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 edition = "2021"
 description = "Python bindings for PandRS (Rust implementation of pandas-like DataFrame)"
 authors = ["Cool Japan"]
@@ -12,7 +12,11 @@ name = "pandrs"
 crate-type = ["cdylib"]
 
 [dependencies]
-pandrs = { path = ".." }
+pandrs = { path = "..", default-features = false }
 pyo3 = { version = "0.24.0", features = ["extension-module", "abi3-py38"] }
 numpy = "0.24.0"
 ndarray = "0.16.1"
+
+[features]
+default = []
+cuda = ["pandrs/cuda"]

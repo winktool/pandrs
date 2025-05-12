@@ -21,6 +21,12 @@ pub struct DataFrame<T: Debug + Clone> {
 }
 
 // Basic method implementation for DataFrame
+impl<T: Debug + Clone> Default for DataFrame<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Debug + Clone> DataFrame<T> {
     pub fn new() -> Self {
         DataFrame {
@@ -300,8 +306,7 @@ impl<T: Debug + Clone> DataFrame<T> {
         // Join process
         let mut new_row_count = 0;
         // Process each row of the left DataFrame
-        for i in 0..self.row_count {
-            let left_value = &left_join_col_data[i];
+        for (i, left_value) in left_join_col_data.iter().enumerate().take(self.row_count) {
             // Use the index map of the right side to search for rows with matching join keys
             if let Some(matching_indices) = right_indices_map.get(left_value) {
                 // If matching rows are found on the right side, generate join results for each row
@@ -650,7 +655,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         writeln!(file, "1.1, 2.2, apple")?;
         writeln!(file, "3.3, 4.4, banana")?;
         writeln!(file, " 5.5 ,6.6, apple")?;
-        writeln!(file, "")?; // empty line test
+        writeln!(file)?; // empty line test
     }
     println!("Attempting to read: {}", file_path_str);
     // Try reading as f64 (should fail on 'label' column)

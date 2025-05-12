@@ -29,6 +29,20 @@ where
     name: Option<String>,
 }
 
+impl Default for Index<String> {
+    fn default() -> Self {
+        // Create a default empty index
+        let values: Vec<String> = Vec::new();
+        let map: HashMap<String, usize> = HashMap::new();
+
+        Self {
+            values,
+            map,
+            name: None,
+        }
+    }
+}
+
 impl<T> Index<T>
 where
     T: Debug + Clone + Eq + Hash + Display,

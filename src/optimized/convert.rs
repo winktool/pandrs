@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::column::{Column, ColumnTrait, Int64Column, Float64Column, StringColumn, BooleanColumn};
-use crate::dataframe::DataValue;
+use crate::DataValue;
 use crate::error::{Error, Result};
 use crate::index::DataFrameIndex;
 use crate::optimized::dataframe::OptimizedDataFrame;
@@ -15,12 +15,13 @@ pub(crate) fn from_standard_dataframe(df: &crate::dataframe::DataFrame) -> Resul
     let mut split_df = SplitDataFrame::new();
     
     for col_name in df.column_names() {
-        if let Some(col) = df.get_column(col_name) {
+        // Try to get the column as a dynamic type to check existence
+        if let Ok(col) = df.get_column::<String>(&col_name) {
             // Extract values one by one for Series iteration
             let mut values = Vec::new();
             for i in 0..col.len() {
                 if let Some(val) = col.get(i) {
-                    values.push(val.to_string());
+                    values.push(ToString::to_string(&val));
                 } else {
                     values.push(String::new());
                 }
@@ -91,7 +92,7 @@ pub(crate) fn from_standard_dataframe(df: &crate::dataframe::DataFrame) -> Resul
     for name in split_df.column_names() {
         if let Ok(column_view) = split_df.column(name) {
             let column = column_view.column().clone();
-            opt_df.add_column(name.to_string(), column)?;
+            opt_df.add_column(name.clone(), column)?;
         }
     }
     
@@ -156,7 +157,7 @@ pub(crate) fn to_standard_dataframe(df: &OptimizedDataFrame) -> Result<crate::da
                         .map(|i| {
                             let val = int_col.get(i);
                             match val {
-                                Ok(Some(v)) => Some(crate::dataframe::DataBox(Box::new(v.clone()))),
+                                Ok(Some(v)) => Some(Box::new(v.clone())),
                                 _ => None
                             }
                         })
@@ -172,7 +173,7 @@ pub(crate) fn to_standard_dataframe(df: &OptimizedDataFrame) -> Result<crate::da
                         .map(|i| {
                             let val = float_col.get(i);
                             match val {
-                                Ok(Some(v)) => Some(crate::dataframe::DataBox(Box::new(v.clone()))),
+                                Ok(Some(v)) => Some(Box::new(v.clone())),
                                 _ => None
                             }
                         })
@@ -188,7 +189,7 @@ pub(crate) fn to_standard_dataframe(df: &OptimizedDataFrame) -> Result<crate::da
                         .map(|i| {
                             let val = str_col.get(i);
                             match val {
-                                Ok(Some(s)) => Some(crate::dataframe::DataBox(Box::new(s.to_string()))),
+                                Ok(Some(s)) => Some(Box::new(s.to_string())),
                                 _ => None
                             }
                         })
@@ -204,7 +205,7 @@ pub(crate) fn to_standard_dataframe(df: &OptimizedDataFrame) -> Result<crate::da
                         .map(|i| {
                             let val = bool_col.get(i);
                             match val {
-                                Ok(Some(v)) => Some(crate::dataframe::DataBox(Box::new(v.clone()))),
+                                Ok(Some(v)) => Some(Box::new(v.clone())),
                                 _ => None
                             }
                         })

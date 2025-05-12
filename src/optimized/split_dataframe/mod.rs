@@ -48,10 +48,15 @@ pub mod column_view;
 // Statistical functions module
 pub mod stats;
 
+// GPU acceleration
+#[cfg(feature = "cuda")]
+pub mod gpu;
+
 // Re-export
 pub use core::{OptimizedDataFrame, ColumnView};
 
 // Re-export I/O types
+#[cfg(feature = "parquet")]
 pub use io::ParquetCompression;
 pub use serialize::JsonOrient;
 

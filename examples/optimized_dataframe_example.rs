@@ -1,7 +1,19 @@
-use pandrs::{OptimizedDataFrame, LazyFrame, AggregateOp, Column, Int64Column, Float64Column, StringColumn};
+#[cfg(feature = "optimized")]
+use pandrs::{
+    AggregateOp, Column, Float64Column, Int64Column, LazyFrame, OptimizedDataFrame, StringColumn,
+};
+#[cfg(feature = "optimized")]
 use std::error::Error;
 
 // Translated Japanese comments and strings into English
+#[cfg(not(feature = "optimized"))]
+fn main() {
+    println!("This example requires the 'optimized' feature flag to be enabled.");
+    println!("Please recompile with:");
+    println!("  cargo run --example optimized_dataframe_example --features \"optimized\"");
+}
+
+#[cfg(feature = "optimized")]
 fn main() -> Result<(), Box<dyn Error>> {
     println!("=== Sample of Optimized DataFrame and Lazy Evaluation ===\n");
 
@@ -18,9 +30,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     df.add_column("value", Column::Float64(value_data))?;
 
     // Add a string column
-    let category_data = StringColumn::new(
-        vec!["A".to_string(), "B".to_string(), "A".to_string(), "C".to_string(), "B".to_string()]
-    );
+    let category_data = StringColumn::new(vec![
+        "A".to_string(),
+        "B".to_string(),
+        "A".to_string(),
+        "C".to_string(),
+        "B".to_string(),
+    ]);
     df.add_column("category", Column::String(category_data))?;
 
     // Display the DataFrame
@@ -84,15 +100,21 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Product category column
     let category_data = StringColumn::new(vec![
-        "Electronics".to_string(), "Furniture".to_string(), "Electronics".to_string(), 
-        "Furniture".to_string(), "Electronics".to_string(), "Food".to_string(),
-        "Food".to_string(), "Electronics".to_string(), "Furniture".to_string(),
+        "Electronics".to_string(),
+        "Furniture".to_string(),
+        "Electronics".to_string(),
+        "Furniture".to_string(),
+        "Electronics".to_string(),
+        "Food".to_string(),
+        "Food".to_string(),
+        "Electronics".to_string(),
+        "Furniture".to_string(),
     ]);
     sales_df.add_column("category", Column::String(category_data))?;
 
     // Sales amount column
     let amount_data = Float64Column::new(vec![
-        150.0, 230.5, 120.0, 450.5, 300.0, 50.0, 75.5, 200.0, 175.0
+        150.0, 230.5, 120.0, 450.5, 300.0, 50.0, 75.5, 200.0, 175.0,
     ]);
     sales_df.add_column("sales", Column::Float64(amount_data))?;
 
@@ -105,10 +127,22 @@ fn main() -> Result<(), Box<dyn Error>> {
         .aggregate(
             vec!["category".to_string()],
             vec![
-                ("sales".to_string(), AggregateOp::Sum, "total_sales".to_string()),
-                ("sales".to_string(), AggregateOp::Mean, "average_sales".to_string()),
-                ("sales".to_string(), AggregateOp::Count, "sales_count".to_string()),
-            ]
+                (
+                    "sales".to_string(),
+                    AggregateOp::Sum,
+                    "total_sales".to_string(),
+                ),
+                (
+                    "sales".to_string(),
+                    AggregateOp::Mean,
+                    "average_sales".to_string(),
+                ),
+                (
+                    "sales".to_string(),
+                    AggregateOp::Count,
+                    "sales_count".to_string(),
+                ),
+            ],
         )
         .execute()?;
 

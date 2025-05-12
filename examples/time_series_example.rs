@@ -1,16 +1,15 @@
 use chrono::NaiveDate;
+use pandrs::error::{Error, Result};
 use pandrs::temporal::{date_range, Frequency, TimeSeries};
-use pandrs::{PandRSError, NA};
+use pandrs::NA;
 use std::str::FromStr;
 
-fn main() -> Result<(), PandRSError> {
+fn main() -> Result<()> {
     println!("=== Time Series Data Example ===");
 
     // Create date range
-    let start_date =
-        NaiveDate::from_str("2023-01-01").map_err(|e| PandRSError::Format(e.to_string()))?;
-    let end_date =
-        NaiveDate::from_str("2023-01-31").map_err(|e| PandRSError::Format(e.to_string()))?;
+    let start_date = NaiveDate::from_str("2023-01-01").map_err(|e| Error::Format(e.to_string()))?;
+    let end_date = NaiveDate::from_str("2023-01-31").map_err(|e| Error::Format(e.to_string()))?;
 
     // Generate daily date range
     let dates = date_range(start_date, end_date, Frequency::Daily, true)?;
@@ -41,9 +40,8 @@ fn main() -> Result<(), PandRSError> {
 
     // Time filtering
     let start_filter =
-        NaiveDate::from_str("2023-01-10").map_err(|e| PandRSError::Format(e.to_string()))?;
-    let end_filter =
-        NaiveDate::from_str("2023-01-20").map_err(|e| PandRSError::Format(e.to_string()))?;
+        NaiveDate::from_str("2023-01-10").map_err(|e| Error::Format(e.to_string()))?;
+    let end_filter = NaiveDate::from_str("2023-01-20").map_err(|e| Error::Format(e.to_string()))?;
     let filtered = time_series.filter_by_time(&start_filter, &end_filter)?;
 
     println!("\n=== Time Filtering Results ===");

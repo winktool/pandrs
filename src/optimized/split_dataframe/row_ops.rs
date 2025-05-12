@@ -308,9 +308,8 @@ impl OptimizedDataFrame {
     /// This function has the same signature as the one in the data operations module,
     /// so the actual implementation is provided as `sample_rows`.
     pub fn sample_rows(&self, n: usize, replace: bool, seed: Option<u64>) -> Result<Self> {
-        use rand::{SeedableRng, Rng, seq::SliceRandom};
+        use rand::{SeedableRng, Rng, seq::SliceRandom, RngCore};
         use rand::rngs::StdRng;
-        use rand::{rng, RngCore}; // thread_rng was renamed to rng
         
         if self.row_count == 0 {
             return Ok(Self::new());
@@ -324,7 +323,7 @@ impl OptimizedDataFrame {
         } else {
             // API changed due to dependency updates, so using a method to generate seed
             let mut seed_bytes = [0u8; 32];
-            rng().fill_bytes(&mut seed_bytes);
+            rand::rng().fill_bytes(&mut seed_bytes);
             StdRng::from_seed(seed_bytes)
         };
         
@@ -333,7 +332,7 @@ impl OptimizedDataFrame {
             // Sampling with replacement
             let mut samples = Vec::with_capacity(n);
             for _ in 0..n {
-                let idx = rng.random_range(0..self.row_count); // gen_range was renamed to random_range
+                let idx = rng.random_range(0..self.row_count);
                 samples.push(idx);
             }
             samples

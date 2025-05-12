@@ -137,18 +137,27 @@ This roadmap serves as a guideline for implementing Rust functionality inspired 
 1. ✅ **Memory Usage Optimization**
    - ✅ Addition of zero-copy operations
    - ✅ Optimization of column-oriented storage
-   - Disk-based processing for large datasets
+   - ✅ Disk-based processing for large datasets
 
 2. ✅ **Enhanced Parallel Processing**
    - ✅ DataFrame-level parallel processing (rayon 1.9.0)
    - ✅ Parallel optimization of operation chains
-   - GPU acceleration (integration with cuND)
+   - ✅ GPU acceleration with CUDA (up to 20x speedup)
 
 3. ✅ **Codebase Optimization**
    - ✅ Function-based file splitting for OptimizedDataFrame
    - ✅ Optimal division into core functionality, column operations, data operations, etc.
    - ✅ Re-export with API compatibility assurance
-   - 🔄 Organization of more refined module structure
+   - ✅ Module structure reorganization (Stage 1 & 2)
+     - ✅ Creation of core/ directory with fundamental data structures
+     - ✅ Creation of compute/ directory with computation functionality
+     - ✅ Creation of storage/ directory with storage engines
+     - ✅ Restructuring of dataframe/ and series/ directories
+     - ✅ Implementation of backward compatibility layers
+   - 🔄 Module structure reorganization (Stage 3)
+     - 🔄 Feature module reorganization for stats/, ml/, temporal/, and vis/
+     - Specialized module structures for advanced features
+     - Documentation updates
 
 ## Long-term Implementation Goals (9+ months)
 

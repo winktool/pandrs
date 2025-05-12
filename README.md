@@ -11,11 +11,13 @@ A DataFrame library for data analysis implemented in Rust. It has features and d
 - Efficient data processing with high-performance column-oriented storage
 - Low memory footprint with categorical data and string pool optimization
 - Multi-core utilization through parallel processing
+- GPU acceleration with CUDA integration (up to 20x speedup)
 - Optimization with lazy evaluation system
 - Thread-safe implementation
 - Robustness leveraging Rust's type safety and ownership system
 - Modularized design (implementation divided by functionality)
 - Python integration (PyO3 bindings)
+- WebAssembly support for browser-based visualization
 
 ## Features
 
@@ -35,9 +37,18 @@ A DataFrame library for data analysis implemented in Rust. It has features and d
 - Visualization with text-based and high-quality graphs
 - Parallel processing support
 - Statistical analysis functions (descriptive statistics, t-tests, regression analysis, etc.)
+- Specialized categorical data statistics (contingency tables, chi-square tests, etc.)
 - Machine learning evaluation metrics (MSE, R², accuracy, F1, etc.)
 - Optimized implementation (column-oriented storage, lazy evaluation, string pool)
 - High-performance split implementation (sub-modularized files for each functionality)
+- GPU acceleration for matrix operations, statistical computation, and ML algorithms
+- Disk-based processing for very large datasets
+- Streaming data support with real-time analytics
+- Distributed processing for datasets exceeding single-machine capacity (experimental)
+  - SQL-like query interface with DataFusion
+  - Window function support for analytics
+  - Advanced expression system for complex transformations
+  - User-defined function support
 
 ## Usage Examples
 
@@ -81,7 +92,28 @@ Add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-pandrs = "0.1.0-alpha.1"
+pandrs = "0.1.0-alpha.2"
+```
+
+For GPU acceleration, add the CUDA feature flag:
+
+```toml
+[dependencies]
+pandrs = { version = "0.1.0-alpha.2", features = ["cuda"] }
+```
+
+For distributed processing capabilities, add the distributed feature:
+
+```toml
+[dependencies]
+pandrs = { version = "0.1.0-alpha.2", features = ["distributed"] }
+```
+
+Multiple features can be combined:
+
+```toml
+[dependencies]
+pandrs = { version = "0.1.0-alpha.2", features = ["cuda", "distributed", "wasm"] }
 ```
 
 ### Working with Missing Values (NA)
@@ -152,6 +184,243 @@ let moving_avg = time_series.rolling_mean(3)?;
 
 // Resampling (convert to weekly)
 let weekly = time_series.resample(Frequency::Weekly).mean()?;
+```
+
+### Distributed Processing (Experimental)
+
+#### Using the DataFrame-Style API
+
+```rust
+use pandrs::{DataFrame, distributed::{DistributedConfig, ToDistributed}};
+
+// Create a local DataFrame
+let mut df = DataFrame::new();
+df.add_column("id".to_string(), (0..10000).collect::<Vec<i64>>())?;
+df.add_column("value".to_string(), (0..10000).map(|x| x as f64 * 1.5).collect::<Vec<f64>>())?;
+df.add_column("group".to_string(), (0..10000).map(|x| (x % 100).to_string()).collect::<Vec<String>>())?;
+
+// Configure distributed processing
+let config = DistributedConfig::new()
+    .with_executor("datafusion")  // Use DataFusion engine
+    .with_concurrency(4);         // Use 4 threads
+
+// Convert to distributed DataFrame
+let dist_df = df.to_distributed(config)?;
+
+// Define distributed operations (lazy execution)
+let result = dist_df
+    .filter("value > 5000.0")?
+    .groupby(&["group"])?
+    .aggregate(&["value"], &["mean"])?;
+
+// Execute operations and get performance metrics
+let executed = result.execute()?;
+if let Some(metrics) = executed.execution_metrics() {
+    println!("Execution time: {}ms", metrics.execution_time_ms());
+    println!("Rows processed: {}", metrics.rows_processed());
+}
+
+// Check execution summary
+println!("{}", executed.summarize()?);
+
+// Collect results back to local DataFrame
+let final_df = executed.collect_to_local()?;
+println!("Result: {}", final_df);
+
+// Write results directly to Parquet
+executed.write_parquet("filtered_results.parquet")?;
+```
+
+#### Using the SQL-Style API with DistributedContext
+
+```rust
+use pandrs::{DataFrame, distributed::{DistributedContext, DistributedConfig}};
+
+// Create a distributed context
+let mut context = DistributedContext::new(
+    DistributedConfig::new()
+        .with_executor("datafusion")
+        .with_concurrency(4)
+)?;
+
+// Register multiple DataFrames with the context
+let customers = DataFrame::new(); // Create customers DataFrame
+let orders = DataFrame::new();    // Create orders DataFrame
+context.register_dataframe("customers", &customers)?;
+context.register_dataframe("orders", &orders)?;
+
+// Also register CSV or Parquet files directly
+context.register_csv("products", "products.csv")?;
+context.register_parquet("sales", "sales.parquet")?;
+
+// Execute SQL queries against registered datasets
+let result = context.sql_to_dataframe("
+    SELECT c.customer_id, c.name, COUNT(o.order_id) as order_count, SUM(o.amount) as total_amount
+    FROM customers c
+    LEFT JOIN orders o ON c.customer_id = o.customer_id
+    GROUP BY c.customer_id, c.name
+    ORDER BY total_amount DESC
+")?;
+
+println!("Query results: {}", result);
+
+// Execute query and write directly to Parquet
+let metrics = context.sql_to_parquet("
+    SELECT p.product_id, p.name, SUM(s.quantity) as total_sold
+    FROM products p
+    JOIN sales s ON p.product_id = s.product_id
+    GROUP BY p.product_id, p.name
+", "product_sales_summary.parquet")?;
+
+println!("Query execution metrics:\n{}", metrics.format());
+```
+
+#### Using Window Functions for Analytics
+
+```rust
+use pandrs::{DataFrame, distributed::{DistributedConfig, ToDistributed, WindowFunctionExt}};
+use pandrs::distributed_window; // Access window functions
+
+// Create a DataFrame with time series data
+let mut df = DataFrame::new();
+// ... add columns with time series data ...
+
+// Convert to distributed DataFrame
+let dist_df = df.to_distributed(DistributedConfig::new())?;
+
+// Add ranking by sales within each region
+let ranked = dist_df.window(&[
+    distributed_window::rank(
+        "sales_rank",       // Output column
+        &["region"],        // Partition by region
+        &[("sales", false)] // Order by sales descending
+    )
+])?;
+
+// Calculate running total of sales by date
+let running_total = dist_df.window(&[
+    distributed_window::cumulative_sum(
+        "sales",          // Input column
+        "running_total",  // Output column
+        &["region"],      // Partition by region
+        &[("date", true)] // Order by date ascending
+    )
+])?;
+
+// Calculate 7-day moving average
+let moving_avg = dist_df.window(&[
+    distributed_window::rolling_avg(
+        "sales",             // Input column
+        "sales_7day_avg",    // Output column
+        &[],                 // No partitioning
+        &[("date", true)],   // Order by date
+        7                    // Window size of 7 days
+    )
+])?;
+
+// Or use SQL directly
+let context = DistributedContext::new(DistributedConfig::new())?;
+context.register_dataframe("sales", &df)?;
+
+let result = context.sql_to_dataframe("
+    SELECT
+        date, region, product, sales,
+        RANK() OVER (PARTITION BY region ORDER BY sales DESC) as sales_rank,
+        SUM(sales) OVER (PARTITION BY region ORDER BY date) as running_total,
+        AVG(sales) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as moving_avg_7day
+    FROM sales
+")?;
+```
+
+#### Using Expressions for Complex Data Transformations
+
+```rust
+use pandrs::{DataFrame, distributed::{DistributedConfig, ToDistributed, Expr, ColumnProjection}};
+
+// Create a DataFrame with sales data
+let mut df = DataFrame::new();
+// ... add columns with sales data ...
+
+// Convert to distributed DataFrame
+let dist_df = df.to_distributed(DistributedConfig::new())?;
+
+// Select columns with complex expressions
+let selected = dist_df.select_expr(&[
+    // Simple column selection
+    ColumnProjection::column("region"),
+    ColumnProjection::column("sales"),
+    // Calculate a new column with expression
+    ColumnProjection::with_alias(
+        Expr::col("sales").mul(Expr::lit(1.1)),
+        "sales_with_bonus"
+    ),
+    // Calculate profit margin percentage
+    ColumnProjection::with_alias(
+        Expr::col("profit").div(Expr::col("sales")).mul(Expr::lit(100.0)),
+        "profit_margin"
+    ),
+])?;
+
+// Filter using complex expressions
+let high_margin = dist_df
+    .filter_expr(
+        Expr::col("profit")
+            .div(Expr::col("sales"))
+            .mul(Expr::lit(100.0))
+            .gt(Expr::lit(15.0))
+    )?;
+
+// Create a user-defined function
+let commission_udf = UdfDefinition::new(
+    "calculate_commission",
+    ExprDataType::Float,
+    vec![ExprDataType::Float, ExprDataType::Float],
+    "CASE
+        WHEN param1 / param0 > 0.2 THEN param0 * 0.05
+        WHEN param1 / param0 > 0.1 THEN param0 * 0.03
+        ELSE param0 * 0.01
+     END"
+);
+
+// Register and use the UDF
+let with_commission = dist_df
+    .create_udf(&[commission_udf])?
+    .select_expr(&[
+        ColumnProjection::column("region"),
+        ColumnProjection::column("sales"),
+        ColumnProjection::column("profit"),
+        ColumnProjection::with_alias(
+            Expr::call("calculate_commission", vec![
+                Expr::col("sales"),
+                Expr::col("profit"),
+            ]),
+            "commission"
+        ),
+    ])?;
+
+// Chain operations together
+let final_analysis = dist_df
+    // Add calculated columns
+    .with_column("profit_pct",
+        Expr::col("profit").div(Expr::col("sales")).mul(Expr::lit(100.0))
+    )?
+    // Filter for high-profit regions
+    .filter_expr(
+        Expr::col("profit_pct").gt(Expr::lit(12.0))
+    )?
+    // Project final columns with calculations
+    .select_expr(&[
+        ColumnProjection::column("region"),
+        ColumnProjection::column("product"),
+        ColumnProjection::column("profit_pct"),
+        // Calculate a bonus amount
+        ColumnProjection::with_alias(
+            Expr::col("profit")
+                .mul(Expr::lit(0.1))
+                .add(Expr::col("profit_pct").mul(Expr::lit(5.0))),
+            "bonus"
+        ),
+    ])?;
 ```
 
 ### Statistical Analysis and Machine Learning Evaluation Functions
@@ -226,6 +495,42 @@ let pivot_result = df.pivot_table(
 )?;
 ```
 
+### Categorical Data Analysis
+
+```rust
+use pandrs::{DataFrame, stats};
+use pandrs::series::{Series, Categorical};
+
+// Create categorical data
+let mut df = DataFrame::new();
+df.add_column("gender".to_string(), Series::new(vec!["M", "F", "M", "F", "M"], Some("gender".to_string()))?)?;
+df.add_column("response".to_string(), Series::new(vec!["Yes", "No", "Yes", "Yes", "No"], Some("response".to_string()))?)?;
+
+// Convert columns to categorical
+df.convert_to_categorical("gender")?;
+df.convert_to_categorical("response")?;
+
+// Create contingency table
+let contingency = stats::contingency_table_from_df(&df, "gender", "response")?;
+println!("Contingency table:\n{}", contingency);
+
+// Chi-square test for independence
+let chi2_result = stats::chi_square_independence(&df, "gender", "response", 0.05)?;
+println!("Chi-square statistic: {}", chi2_result.chi2_statistic);
+println!("p-value: {}", chi2_result.p_value);
+println!("Significant association: {}", chi2_result.significant);
+
+// Measure of association
+let cramers_v = stats::cramers_v_from_df(&df, "gender", "response")?;
+println!("Cramer's V: {}", cramers_v);
+
+// Test association between categorical and numeric variables
+df.add_column("score".to_string(), Series::new(vec![85, 92, 78, 95, 88], Some("score".to_string()))?)?;
+let anova_result = stats::categorical_anova_from_df(&df, "gender", "score", 0.05)?;
+println!("F-statistic: {}", anova_result.f_statistic);
+println!("p-value: {}", anova_result.p_value);
+```
+
 ## Development Plan and Implementation Status
 
 - [x] Basic DataFrame structure
@@ -286,6 +591,11 @@ let pivot_result = df.pivot_table(
   - [x] Interoperability with numpy and pandas
   - [x] Jupyter Notebook support
   - [x] Speedup with string pool optimization (up to 3.33x)
+- [x] Distributed processing enhancements
+  - [x] SQL-like API with DistributedContext
+  - [x] Window function support
+  - [x] Expression system for complex transformations
+  - [x] User-defined function registration and use
 - [x] Lazy evaluation system
   - [x] Operation optimization with computation graph
   - [x] Operation fusion
@@ -303,6 +613,13 @@ let pivot_result = df.pivot_table(
   - [x] File separation of OptimizedDataFrame by functionality
   - [x] API compatibility maintained through re-exports
   - [x] Independent implementation of ML metrics module
+- [x] GPU acceleration
+  - [x] CUDA integration for numerical operations
+  - [x] GPU-accelerated matrix operations
+  - [x] GPU-accelerated statistical functions
+  - [x] GPU-accelerated machine learning algorithms
+  - [x] Comprehensive benchmarking utility
+  - [x] Python bindings for GPU acceleration
 
 ### Multi-level Index Operations
 
@@ -334,6 +651,49 @@ let level1_values = multi_idx.get_level_values(1)?;
 
 // Swap levels
 let swapped_idx = multi_idx.swaplevel(0, 1)?;
+```
+
+### GPU Acceleration
+
+```rust
+use pandrs::gpu::{self, operations::{GpuMatrix, GpuVector}};
+use pandrs::dataframe::gpu::DataFrameGpuExt;
+use ndarray::{Array1, Array2};
+
+// Initialize GPU
+let device_status = gpu::init_gpu()?;
+println!("GPU available: {}", device_status.available);
+
+// Create matrices for GPU operations
+let a_data = Array2::from_shape_vec((1000, 500),
+    (0..500000).map(|i| i as f64).collect())?;
+let b_data = Array2::from_shape_vec((500, 1000),
+    (0..500000).map(|i| i as f64).collect())?;
+
+// Create GPU matrices
+let a = GpuMatrix::new(a_data);
+let b = GpuMatrix::new(b_data);
+
+// Perform GPU-accelerated matrix multiplication
+let result = a.dot(&b)?;
+
+// GPU-accelerated DataFrame operations
+let mut df = DataFrame::new();
+// Add data to DataFrame...
+
+// Using GPU-accelerated correlation matrix
+let corr_matrix = df.gpu_corr(&["col1", "col2", "col3"])?;
+
+// GPU-accelerated linear regression
+let model = df.gpu_linear_regression("y", &["x1", "x2", "x3"])?;
+
+// GPU-accelerated PCA
+let (components, explained_variance, transformed) = df.gpu_pca(&["x1", "x2", "x3"], 2)?;
+
+// Benchmarking CPU vs GPU performance
+let mut benchmark = gpu::benchmark::GpuBenchmark::new()?;
+let matrix_multiply_result = benchmark.benchmark_matrix_multiply(1000, 1000, 1000)?;
+println!("Matrix multiplication speedup: {}x", matrix_multiply_result.speedup.unwrap_or(0.0));
 ```
 
 ### Python Binding Usage Examples
@@ -370,6 +730,12 @@ idx1 = string_pool.add("repeated_value")
 idx2 = string_pool.add("repeated_value")  # Returns the same index
 print(string_pool.get(idx1))  # Returns "repeated_value"
 
+# GPU acceleration in Python
+pr.gpu.init_gpu()  # Initialize GPU
+gpu_df = df.gpu_accelerate()
+corr_matrix = gpu_df.gpu_corr(['A', 'C'])
+pca_result = gpu_df.gpu_pca(['A', 'C'], n_components=1)
+
 # CSV input/output
 df.to_csv('data.csv')
 df_loaded = pr.OptimizedDataFrame.read_csv('data.csv')
@@ -385,7 +751,7 @@ display_dataframe(df, max_rows=10, max_cols=5)
 
 ## Performance Optimization Results
 
-The implementation of optimized column-oriented storage and lazy evaluation system has achieved significant performance improvements:
+The implementation of optimized column-oriented storage, lazy evaluation system, and GPU acceleration has achieved significant performance improvements:
 
 ### Performance Comparison of Key Operations
 
@@ -395,6 +761,16 @@ The implementation of optimized column-oriented storage and lazy evaluation syst
 | DataFrame Creation (1 million rows) | NA | NA | NA |
 | Filtering | 596.146ms | 161.816ms | 3.68x |
 | Group Aggregation | 544.384ms | 107.837ms | 5.05x |
+
+### GPU Acceleration Performance (vs CPU)
+
+| Operation | Data Size | CPU Time | GPU Time | Speedup |
+|-----------|-----------|----------|----------|---------|
+| Matrix Multiplication | 1000x1000 | 232.8 ms | 11.5 ms | 20.2x |
+| Element-wise Addition | 2000x2000 | 18.6 ms | 2.3 ms | 8.1x |
+| Correlation Matrix | 10000x10 | 89.4 ms | 12.1 ms | 7.4x |
+| Linear Regression | 10000x10 | 124.3 ms | 18.7 ms | 6.6x |
+| Rolling Window | 100000, window=100 | 58.2 ms | 9.8 ms | 5.9x |
 
 ### String Processing Optimization
 
@@ -421,6 +797,34 @@ The implementation of optimized column-oriented storage and lazy evaluation syst
 
 ## Recent Improvements
 
+- **GPU Acceleration Integration**
+  - CUDA-based acceleration for performance-critical operations
+  - Up to 20x speedup for matrix operations
+  - GPU-accelerated statistical functions and ML algorithms
+  - Transparent CPU fallback when GPU is unavailable
+  - Comprehensive benchmarking utility for CPU vs GPU performance comparison
+  - Python bindings for GPU functionality
+
+- **Specialized Categorical Data Statistics**
+  - Comprehensive contingency table implementation
+  - Chi-square test for independence
+  - Cramer's V measure of association
+  - Categorical ANOVA for comparing means across categories
+  - Entropy and mutual information calculations
+  - Statistical summaries specific to categorical variables
+
+- **Large-Scale Data Processing**
+  - Disk-based processing for datasets larger than available memory
+  - Memory-mapped file support for efficient large data access
+  - Chunked processing capabilities for scalable data operations
+  - Spill-to-disk functionality when memory limits are reached
+
+- **Streaming Data Support**
+  - Real-time data processing interfaces
+  - Stream connectors for various data sources
+  - Windowed operations on streaming data
+  - Real-time analytics capabilities
+
 - **Column-Oriented Storage Engine**
   - Type-specialized column implementation (Int64Column, Float64Column, StringColumn, BooleanColumn)
   - Improved cache efficiency through memory locality
@@ -446,6 +850,7 @@ The implementation of optimized column-oriented storage and lazy evaluation syst
   - Utilization of NumPy buffer protocol
   - Near zero-copy data access
   - Type-specialized Python API
+  - GPU acceleration support through Python bindings
 
 - **Advanced DataFrame Operations**
   - Complete implementation of long-form and wide-form conversion (melt, stack, unstack)
@@ -456,6 +861,13 @@ The implementation of optimized column-oriented storage and lazy evaluation syst
   - Support for RFC3339 format date parsing
   - Complete implementation of advanced window operations
   - Support for complete format frequency specification (`DAILY`, `WEEKLY`, etc.)
+  - GPU-accelerated time series operations
+
+- **WebAssembly Support**
+  - Browser-based visualization capabilities
+  - Interactive dashboard functionality
+  - Theme customization options
+  - Multiple visualization types support
 
 - **Stability and Quality Improvements**
   - Implementation of comprehensive test suite
@@ -517,12 +929,12 @@ df.plotters_multi(&["temperature", "humidity"], "multi_series.png", multi_settin
 
 ## Dependency Versions
 
-Latest dependency versions (April 2024):
+Latest dependency versions (May 2024):
 
 ```toml
 [dependencies]
 num-traits = "0.2.19"        # Numeric trait support
-thiserror = "2.0.12"          # Error handling
+thiserror = "2.0.12"         # Error handling
 serde = { version = "1.0.219", features = ["derive"] }  # Serialization
 serde_json = "1.0.114"       # JSON processing
 chrono = "0.4.40"            # Date and time processing
@@ -533,10 +945,26 @@ lazy_static = "1.5.0"        # Lazy initialization
 rand = "0.9.0"               # Random number generation
 tempfile = "3.8.1"           # Temporary files
 textplots = "0.8.7"          # Text-based visualization
-plotters = "0.3.7"          # High-quality visualization
+plotters = "0.3.7"           # High-quality visualization
 chrono-tz = "0.10.3"         # Timezone processing
 parquet = "54.3.1"           # Parquet file support
 arrow = "54.3.1"             # Arrow format support
+crossbeam-channel = "0.5.8"  # For concurrent message passing
+memmap2 = "0.7.1"            # For memory-mapped files
+calamine = "0.23.1"          # For Excel reading
+simple_excel_writer = "0.2.0" # For Excel writing
+
+# Optional dependencies (feature-gated)
+# CUDA support
+cudarc = "0.10.0"            # CUDA bindings
+half = "2.3.1"               # Half-precision floating point support
+ndarray-cuda = "0.2.0"       # CUDA support for ndarray
+
+# WebAssembly support
+wasm-bindgen = "0.2.91"      # WebAssembly bindings
+js-sys = "0.3.68"            # JavaScript interop
+web-sys = "0.3.68"           # Web API bindings
+plotters-canvas = "0.4.0"    # Canvas backend for plotters
 ```
 
 ## License

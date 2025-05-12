@@ -3,7 +3,9 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
+#[cfg(feature = "excel")]
 use calamine::{open_workbook, Reader, Xlsx};
+#[cfg(feature = "excel")]
 use simple_excel_writer::{Workbook, Sheet};
 
 use crate::dataframe::DataFrame;
@@ -13,6 +15,7 @@ use crate::index::Index;
 use crate::column::{Column, Int64Column, Float64Column, StringColumn, BooleanColumn};
 use crate::series::Series;
 
+#[cfg(feature = "excel")]
 /// Read DataFrame from Excel (.xlsx) file
 ///
 /// # Arguments
@@ -47,6 +50,7 @@ use crate::series::Series;
 /// // Read only specific columns (by column name)
 /// let df = read_excel("data.xlsx", None, true, 0, Some(&["name", "age"])).unwrap();
 /// ```
+#[cfg(feature = "excel")]
 pub fn read_excel<P: AsRef<Path>>(
     path: P, 
     sheet_name: Option<&str>,
@@ -231,6 +235,7 @@ fn infer_series_from_strings(name: &str, data: &[String]) -> Result<Option<Serie
 /// ```ignore
 /// // DOC test disabled
 /// ```
+#[cfg(feature = "excel")]
 pub fn write_excel<P: AsRef<Path>>(
     df: &OptimizedDataFrame,
     path: P,

@@ -185,7 +185,7 @@ impl<'a> PivotTable<'a> {
             }
 
             // Add row data to DataFrame
-            result_df.add_row_data(row_data)?;
+            result_df.add_row_data_from_hashmap(row_data)?;
         }
 
         Ok(result_df)
@@ -366,7 +366,7 @@ impl<'a> GroupBy<'a> {
             }
 
             // Add row data to DataFrame
-            result_df.add_row_data(row_data)?;
+            result_df.add_row_data_from_hashmap(row_data)?;
         }
 
         Ok(result_df)

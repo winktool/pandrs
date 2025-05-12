@@ -1,6 +1,7 @@
-use pandrs::{DataFrame, PandRSError, Series};
+use pandrs::error::Result;
+use pandrs::{DataFrame, Series};
 
-fn main() -> Result<(), PandRSError> {
+fn main() -> Result<()> {
     println!("=== PandRS Basic Usage Example ===");
 
     // Creating Series

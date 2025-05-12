@@ -1,6 +1,7 @@
-use pandrs::{GroupBy, PandRSError, Series};
+use pandrs::error::Result;
+use pandrs::{GroupBy, Series};
 
-fn main() -> Result<(), PandRSError> {
+fn main() -> Result<()> {
     println!("=== Example of GroupBy Operations ===");
 
     // Create sample data

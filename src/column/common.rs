@@ -1,52 +1,11 @@
+// Re-export from core with deprecation notice
+#[deprecated(since = "0.1.0-alpha.2", note = "Use crate::core::column types")]
+pub use crate::core::column::{ColumnType, ColumnTrait, ColumnCast};
+pub use crate::core::error::{Error, Result};
+
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
-
-use crate::error::{Error, Result};
-
-/// Enum to identify column types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ColumnType {
-    Int64,
-    Float64,
-    String,
-    Boolean,
-}
-
-/// Trait defining common operations for columns
-pub trait ColumnTrait: Debug + Send + Sync {
-    /// Returns the length of the column
-    fn len(&self) -> usize;
-    
-    /// Returns whether the column is empty
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-    
-    /// Returns the type of the column
-    fn column_type(&self) -> ColumnType;
-    
-    /// Returns the name of the column
-    fn name(&self) -> Option<&str>;
-    
-    /// Clones the column
-    fn clone_column(&self) -> Column;
-    
-    /// Retrieves the column as a type `Any`
-    fn as_any(&self) -> &dyn Any;
-}
-
-/// Extension trait for type casting (to avoid object safety issues)
-pub trait ColumnCast {
-    /// Casts the column as a boxed type
-    fn as_boxed<T: 'static>(&self) -> Option<&T>;
-}
-
-impl<T: ColumnTrait> ColumnCast for T {
-    fn as_boxed<U: 'static>(&self) -> Option<&U> {
-        self.as_any().downcast_ref::<U>()
-    }
-}
 
 /// Enum representing a column
 #[derive(Debug, Clone)]
@@ -59,12 +18,12 @@ pub enum Column {
 
 /// Bitmask to track NULL values
 #[derive(Debug, Clone)]
-pub struct BitMask {
+pub struct LegacyBitMask {
     pub(crate) data: Arc<[u8]>,
     pub(crate) len: usize,
 }
 
-impl BitMask {
+impl LegacyBitMask {
     /// Creates a new bitmask
     pub fn new(length: usize) -> Self {
         let bytes_needed = (length + 7) / 8;

@@ -1,0 +1,17 @@
+//! # Backward Compatibility Layer for Schema Validator Module
+//!
+//! This module provides backward compatibility with code that was using the
+//! previous organization of the schema_validator.rs file.
+
+// Re-export all types from the new modules
+pub use crate::distributed::schema_validator::{
+    SchemaValidator, are_join_compatible
+};
+
+// The following is just to ensure documentation clarity in case someone is using
+// the old path, but implementation is delegated to the new modules
+#[deprecated(
+    since = "0.1.0",
+    note = "Use the specific modules instead: schema_validator::core, schema_validator::validation, etc."
+)]
+pub type Deprecated = ();

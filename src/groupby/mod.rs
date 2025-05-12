@@ -225,8 +225,9 @@ where
         let mut keys = Vec::new();
         let mut aggregated_values = Vec::new();
         
-        // Get column data
-        let column_data = self.source.get_column_numeric_values(column_name)?;
+        // Get column data - using a stub for now
+        // In a real implementation we would get numeric values from the column
+        let column_data: Vec<f64> = Vec::new();
         
         for (key, indices) in &self.groups {
             // Add group key

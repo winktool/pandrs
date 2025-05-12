@@ -1,22 +1,33 @@
-use pandrs::{OptimizedDataFrame, Column, Int64Column, Float64Column, StringColumn, LazyFrame};
-use pandrs::error::Error;
+#[cfg(feature = "optimized")]
+use pandrs::error::Result;
+#[cfg(feature = "optimized")]
+use pandrs::{Column, Float64Column, Int64Column, LazyFrame, OptimizedDataFrame, StringColumn};
+
+// Provide a fallback main function when the optimized feature is not enabled
+#[cfg(not(feature = "optimized"))]
+fn main() {
+    println!("This example requires the 'optimized' feature flag to be enabled.");
+    println!("Please recompile with:");
+    println!("  cargo run --example optimized_basic_usage --features \"optimized\"");
+}
 
 // Translated Japanese comments and strings into English
-fn main() -> Result<(), Error> {
+#[cfg(feature = "optimized")]
+fn main() -> Result<()> {
     println!("=== PandRS Optimized Basic Usage Example ===");
 
     // Create an optimized DataFrame
     println!("\n=== Creating a DataFrame ===");
     let mut df = OptimizedDataFrame::new();
-    
+
     // Create and add an integer column
     let ages = Int64Column::new(vec![30, 25, 40]);
     df.add_column("age", Column::Int64(ages))?;
-    
+
     // Create and add a floating-point column
     let heights = Float64Column::new(vec![180.0, 175.0, 182.0]);
     df.add_column("height", Column::Float64(heights))?;
-    
+
     // Create and add a string column
     let names = StringColumn::new(vec![
         "Alice".to_string(),
@@ -61,12 +72,10 @@ fn main() -> Result<(), Error> {
     // Example of lazy evaluation
     println!("\n=== Example of Lazy Evaluation ===");
     let lazy_df = LazyFrame::new(df);
-    
+
     // Select rows where the name is "Alice" or "Bob"
-    let result = lazy_df
-        .select(&["name", "age", "height"])
-        .execute()?;
-    
+    let result = lazy_df.select(&["name", "age", "height"]).execute()?;
+
     println!("DataFrame with selected columns only: {:?}", result);
 
     println!("\n=== Sample Complete ===");

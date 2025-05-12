@@ -20,7 +20,7 @@ fn test_series_numeric_operations() {
     assert_eq!(series.sum(), 150);
 
     // Mean
-    assert_eq!(series.mean().unwrap(), 30);
+    assert_eq!(series.mean().unwrap(), 30.0);
 
     // Minimum
     assert_eq!(series.min().unwrap(), 10);
