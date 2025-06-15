@@ -7,6 +7,7 @@ use tempfile::{tempdir, NamedTempFile};
 // use std::collections::HashMap;
 
 // Helper function to create a test CSV file
+#[allow(clippy::result_large_err)]
 fn create_test_csv() -> Result<NamedTempFile> {
     let mut temp_file = NamedTempFile::new().unwrap();
 
@@ -33,7 +34,7 @@ fn create_test_csv() -> Result<NamedTempFile> {
 }
 
 #[test]
-#[ignore = "Chunked DataFrame implementation is not yet complete"]
+#[allow(clippy::result_large_err)]
 fn test_chunked_dataframe() -> Result<()> {
     let test_file = create_test_csv()?;
 
@@ -82,7 +83,7 @@ fn test_chunked_dataframe() -> Result<()> {
 }
 
 #[test]
-#[ignore = "DiskBasedDataFrame implementation is not yet complete"]
+#[allow(clippy::result_large_err)]
 fn test_disk_based_dataframe() -> Result<()> {
     let test_file = create_test_csv()?;
 
@@ -107,7 +108,7 @@ fn test_disk_based_dataframe() -> Result<()> {
 
 // Test for memory-mapped file handling
 #[test]
-#[ignore = "Memory mapping implementation is not yet complete"]
+#[allow(clippy::result_large_err)]
 fn test_memory_mapping() -> Result<()> {
     let test_file = create_test_csv()?;
 
@@ -131,7 +132,7 @@ fn test_memory_mapping() -> Result<()> {
 
 // Test for spill-to-disk functionality
 #[test]
-#[ignore = "Spill-to-disk functionality is not yet complete"]
+#[allow(clippy::result_large_err)]
 fn test_spill_to_disk() -> Result<()> {
     let test_file = create_test_csv()?;
 
@@ -155,7 +156,7 @@ fn test_spill_to_disk() -> Result<()> {
 
 // Test for custom temporary directory
 #[test]
-#[ignore = "Custom temp directory feature is not yet fully implemented"]
+#[allow(clippy::result_large_err)]
 fn test_custom_temp_dir() -> Result<()> {
     let test_file = create_test_csv()?;
 

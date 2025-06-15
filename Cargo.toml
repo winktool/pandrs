@@ -1,6 +1,6 @@
 [package]
 name = "pandrs"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 edition = "2021"
 description = "A Rust implementation of pandas-like DataFrame for data analysis"
 authors = ["Cool Japan"]
@@ -56,20 +56,23 @@ ndarray = { version = "0.15.6", optional = true } # N-dimensional arrays
 # Distributed processing support (optional) - downgraded for chrono compatibility
 datafusion = { version = "30.0.0", optional = true }  # DataFrame processing engine
 uuid = { version = "1.4.1", optional = true }  # For unique IDs in distributed processing
+futures = { version = "0.3.30", optional = true }  # For async operations in distributed processing
+tokio = { version = "1.40", features = ["full"], optional = true }  # Async runtime for streaming
 log = "0.4.20"  # Logging interface
 
 [features]
 default = []
 optimized = []  # Flag for optimized implementation
+jit = []  # Just-In-Time compilation support
 backward_compat = []  # Backward compatibility for older APIs
 wasm = ["wasm-bindgen", "js-sys", "web-sys", "plotters-canvas", "visualization"]  # WebAssembly support
 cuda = ["cudarc", "half", "ndarray"]  # CUDA support (requires CUDA toolkit)
-distributed = ["datafusion", "uuid"]  # Distributed processing support
+distributed = ["datafusion", "uuid", "dep:arrow", "dep:parquet", "dep:futures"]  # Distributed processing support
 excel = ["simple_excel_writer", "calamine"]  # Excel support
 visualization = ["textplots", "plotters"]  # Visualization support
 parquet = ["dep:arrow", "dep:parquet"]  # Parquet file support
 sql = ["dep:sqlx"]  # SQL support
-streaming = []  # Streaming data processing support
+streaming = ["dep:tokio", "dep:futures"]  # Streaming data processing support
 
 # Feature bundle for testing core features without external dependencies
 test-core = ["optimized", "backward_compat", "streaming"]
@@ -88,4 +91,20 @@ criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
 name = "comprehensive_benchmark"
+harness = false
+
+[[bench]]
+name = "enhanced_comprehensive_benchmark"
+harness = false
+
+[[bench]]
+name = "regression_benchmark"
+harness = false
+
+[[bench]]
+name = "profiling_benchmark"
+harness = false
+
+[[bench]]
+name = "legacy_dataframe_bench"
 harness = false

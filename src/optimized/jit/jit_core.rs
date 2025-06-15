@@ -1,16 +1,16 @@
 //! Core JIT compilation infrastructure for pandrs
-//! 
+//!
 //! This module provides the fundamental JIT compilation capabilities,
 //! supporting fast execution of numerical operations on arrays of data.
-//! 
+//!
 //! The JIT system supports multiple numeric types (f64, f32, i64, i32) and
 //! provides a flexible, type-safe interface for creating JIT-compiled functions.
 
-use std::sync::Arc;
-use std::fmt;
 use std::error::Error as StdError;
+use std::fmt;
+use std::sync::Arc;
 
-use super::types::{JitType, JitNumeric, TypedVector, NumericValue};
+use super::types::{JitNumeric, JitType, NumericValue, TypedVector};
 
 /// Error types for JIT compilation and execution
 #[derive(Debug)]
@@ -48,10 +48,10 @@ pub trait JitCompilable<Args, Result> {
 pub trait GenericJitCompilable {
     /// Execute the function with typed vector input and return a numeric result
     fn execute_typed(&self, args: TypedVector) -> NumericValue;
-    
+
     /// Get the supported input type
     fn input_type_name(&self) -> &'static str;
-    
+
     /// Get the output type
     fn output_type_name(&self) -> &'static str;
 }
@@ -70,11 +70,11 @@ pub type Int32ArrayFn = dyn Fn(Vec<i32>) -> i32 + Send + Sync;
 
 /// Represents a JIT-compiled function
 #[derive(Clone)]
-pub struct JitFunction<F = FloatArrayFn> {
+pub struct JitFunction {
     /// Function name for debugging and caching
     name: String,
     /// Native function to use when JIT is disabled
-    native_fn: Arc<F>,
+    native_fn: Arc<FloatArrayFn>,
     /// Input type name
     input_type: &'static str,
     /// Output type name
@@ -127,12 +127,12 @@ impl JitStats {
     }
 }
 
-impl<F> JitFunction<F>
-where
-    F: Fn(Vec<f64>) -> f64 + Send + Sync + 'static,
-{
+impl JitFunction {
     /// Create a new JIT function with a native implementation
-    pub fn new(name: impl Into<String>, native_fn: F) -> Self {
+    pub fn new<F>(name: impl Into<String>, native_fn: F) -> Self
+    where
+        F: Fn(Vec<f64>) -> f64 + Send + Sync + 'static,
+    {
         Self {
             name: name.into(),
             native_fn: Arc::new(native_fn),
@@ -166,26 +166,23 @@ where
     pub fn name(&self) -> &str {
         &self.name
     }
-    
+
     /// Get the input type name
     pub fn input_type(&self) -> &'static str {
         self.input_type
     }
-    
+
     /// Get the output type name
     pub fn output_type(&self) -> &'static str {
         self.output_type
     }
 }
 
-impl<F> JitCompilable<Vec<f64>, f64> for JitFunction<F>
-where
-    F: Fn(Vec<f64>) -> f64 + Send + Sync,
-{
+impl JitCompilable<Vec<f64>, f64> for JitFunction {
     fn execute(&self, args: Vec<f64>) -> f64 {
         // Record execution time for benchmarking
         let start = std::time::Instant::now();
-        
+
         #[cfg(feature = "jit")]
         {
             if let Some(ctx) = &self.jit_context {
@@ -193,21 +190,21 @@ where
                 // For now, we'll just use the native implementation
                 let result = (self.native_fn)(args);
                 let duration = start.elapsed().as_nanos() as u64;
-                
+
                 // In a real implementation, record stats
                 // stats.record_jit_execution(duration);
-                
+
                 return result;
             }
         }
-        
+
         // Fall back to native implementation
         let result = (self.native_fn)(args);
         let duration = start.elapsed().as_nanos() as u64;
-        
+
         // In a real implementation, record stats
         // stats.record_native_execution(duration);
-        
+
         result
     }
 }
@@ -217,7 +214,6 @@ where
 pub struct JitContext {
     /// Function name for debugging and caching
     name: String,
-    
     // In a real implementation, this would contain
     // the JIT module, compilation context, etc.
     // For now, it's a placeholder
@@ -229,12 +225,12 @@ impl JitContext {
     pub fn compile(name: &str) -> JitResult<Self> {
         // In a real implementation, this would use Cranelift to compile
         // the function. For now, it's just a stub.
-        
-        use cranelift_codegen::settings;
-        
-        let _flags_builder = settings::builder();
+
+        // TODO: Implement actual JIT compilation with Cranelift
+        // use cranelift_codegen::settings;
+        // let _flags_builder = settings::builder();
         // Configure JIT settings here
-        
+
         // Create the JIT context
         Ok(Self {
             name: name.to_string(),
@@ -243,19 +239,19 @@ impl JitContext {
 }
 
 /// Decorator-like function to create JIT functions (similar to @numba.jit in Python)
-pub fn jit<F>(name: impl Into<String>, f: F) -> JitFunction<F>
+pub fn jit<F>(name: impl Into<String>, f: F) -> JitFunction
 where
     F: Fn(Vec<f64>) -> f64 + Send + Sync + 'static,
 {
     let func = JitFunction::new(name, f);
-    
+
     #[cfg(feature = "jit")]
     {
         // In a real implementation, we'd compile right away
         // For now, just return the function
         return func;
     }
-    
+
     #[cfg(not(feature = "jit"))]
     {
         func

@@ -99,11 +99,38 @@ impl DataFrame {
 
     /// Get a string value from the DataFrame
     pub fn get_string_value(&self, column_name: &str, row_idx: usize) -> Result<&str> {
-        // Implementation would need to get the string value at the specified row
-        // For now, just return an error as not implemented
-        Err(Error::NotImplemented(
-            "get_string_value is not implemented".into(),
-        ))
+        // Check if column exists
+        let col = self
+            .columns
+            .get(column_name)
+            .ok_or_else(|| Error::ColumnNotFound(column_name.to_string()))?;
+
+        // Check if row index is valid
+        if row_idx >= self.row_count {
+            return Err(Error::InvalidValue(format!(
+                "Row index {} is out of bounds for DataFrame with {} rows",
+                row_idx, self.row_count
+            )));
+        }
+
+        // Try to downcast to Series<String> and get the value
+        if let Some(string_series) = col.as_any().downcast_ref::<crate::series::Series<String>>() {
+            if let Some(value) = string_series.get(row_idx) {
+                Ok(value)
+            } else {
+                Err(Error::InvalidValue(format!(
+                    "No value found at row {} in column '{}'",
+                    row_idx, column_name
+                )))
+            }
+        } else {
+            // If it's not a string column, try to convert other types to string
+            // But since we need to return &str, we can't create temporary strings
+            Err(Error::InvalidValue(format!(
+                "Column '{}' is not a string column. Use get_column_string_values() for type conversion.",
+                column_name
+            )))
+        }
     }
 
     /// Add a column to the DataFrame
@@ -143,6 +170,74 @@ impl DataFrame {
         self.column_order.clone()
     }
 
+    /// Rename columns in the DataFrame using a mapping
+    pub fn rename_columns(&mut self, column_map: &HashMap<String, String>) -> Result<()> {
+        // First, validate that all old column names exist
+        for old_name in column_map.keys() {
+            if !self.contains_column(old_name) {
+                return Err(Error::ColumnNotFound(old_name.clone()));
+            }
+        }
+
+        // Check for duplicate new names
+        let mut new_names_set = std::collections::HashSet::new();
+        for new_name in column_map.values() {
+            if !new_names_set.insert(new_name) {
+                return Err(Error::DuplicateColumnName(new_name.clone()));
+            }
+        }
+
+        // Check that new names don't conflict with existing column names (except those being renamed)
+        for new_name in column_map.values() {
+            if self.contains_column(new_name) && !column_map.contains_key(new_name) {
+                return Err(Error::DuplicateColumnName(new_name.clone()));
+            }
+        }
+
+        // Apply the renaming
+        for (old_name, new_name) in column_map {
+            // Update the column_order vector
+            if let Some(pos) = self.column_order.iter().position(|x| x == old_name) {
+                self.column_order[pos] = new_name.clone();
+            }
+
+            // Move the column data to the new key
+            if let Some(column_data) = self.columns.remove(old_name) {
+                self.columns.insert(new_name.clone(), column_data);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Set all column names in the DataFrame
+    pub fn set_column_names(&mut self, names: Vec<String>) -> Result<()> {
+        // Check that the number of names matches the number of columns
+        if names.len() != self.column_order.len() {
+            return Err(Error::InconsistentRowCount {
+                expected: self.column_order.len(),
+                found: names.len(),
+            });
+        }
+
+        // Check for duplicate names
+        let mut names_set = std::collections::HashSet::new();
+        for name in &names {
+            if !names_set.insert(name) {
+                return Err(Error::DuplicateColumnName(name.clone()));
+            }
+        }
+
+        // Create a mapping from old names to new names
+        let mut column_map = HashMap::new();
+        for (old_name, new_name) in self.column_order.iter().zip(names.iter()) {
+            column_map.insert(old_name.clone(), new_name.clone());
+        }
+
+        // Apply the renaming using the existing rename_columns method
+        self.rename_columns(&column_map)
+    }
+
     /// Get a column from the DataFrame with generic type
     pub fn get_column<T: 'static + Debug + Clone + Send + Sync>(
         &self,
@@ -163,30 +258,69 @@ impl DataFrame {
         }
     }
 
-    /// Get string values from a column (stub implementation for tests)
+    /// Get string values from a column
     pub fn get_column_string_values(&self, column_name: &str) -> Result<Vec<String>> {
         if !self.contains_column(column_name) {
             return Err(Error::ColumnNotFound(column_name.to_string()));
         }
 
-        // This is a simplified implementation for testing
-        if column_name == "name" {
-            return Ok(vec![
-                "Alice".to_string(),
-                "Bob".to_string(),
-                "Charlie".to_string(),
-            ]);
-        } else if column_name == "age" {
-            return Ok(vec!["30".to_string(), "25".to_string(), "35".to_string()]);
-        }
+        let column = self.columns.get(column_name).unwrap();
 
-        // For other columns, return dummy values
-        let mut result = Vec::with_capacity(self.row_count);
-        for i in 0..self.row_count {
-            result.push(format!("value_{}_{}", column_name, i));
+        // Try to downcast to different Series types and convert to strings
+        if let Some(string_series) = column
+            .as_any()
+            .downcast_ref::<crate::series::Series<String>>()
+        {
+            Ok(string_series.values().to_vec())
+        } else if let Some(i32_series) =
+            column.as_any().downcast_ref::<crate::series::Series<i32>>()
+        {
+            Ok(i32_series
+                .values()
+                .iter()
+                .map(|v| ToString::to_string(v))
+                .collect())
+        } else if let Some(i64_series) =
+            column.as_any().downcast_ref::<crate::series::Series<i64>>()
+        {
+            Ok(i64_series
+                .values()
+                .iter()
+                .map(|v| ToString::to_string(v))
+                .collect())
+        } else if let Some(f32_series) =
+            column.as_any().downcast_ref::<crate::series::Series<f32>>()
+        {
+            Ok(f32_series
+                .values()
+                .iter()
+                .map(|v| ToString::to_string(v))
+                .collect())
+        } else if let Some(f64_series) =
+            column.as_any().downcast_ref::<crate::series::Series<f64>>()
+        {
+            Ok(f64_series
+                .values()
+                .iter()
+                .map(|v| ToString::to_string(v))
+                .collect())
+        } else if let Some(bool_series) = column
+            .as_any()
+            .downcast_ref::<crate::series::Series<bool>>()
+        {
+            Ok(bool_series
+                .values()
+                .iter()
+                .map(|v| ToString::to_string(v))
+                .collect())
+        } else {
+            // Fallback for unsupported types
+            let mut result = Vec::with_capacity(self.row_count);
+            for i in 0..self.row_count {
+                result.push(format!("unsupported_type_{}_{}", column_name, i));
+            }
+            Ok(result)
         }
-
-        Ok(result)
     }
 
     /// Get a column by index (compatibility method)
@@ -214,11 +348,60 @@ impl DataFrame {
 
     /// Create DataFrame from CSV reader
     pub fn from_csv_reader<R: std::io::Read>(
-        _reader: &mut csv::Reader<R>,
-        _has_header: bool,
+        reader: &mut csv::Reader<R>,
+        has_header: bool,
     ) -> Result<Self> {
-        // Implement CSV reader import when needed
-        Ok(Self::new())
+        let mut df = Self::new();
+
+        // Get headers
+        let headers: Vec<String> = if has_header {
+            reader
+                .headers()
+                .map_err(|e| Error::IoError(format!("CSV header error: {}", e)))?
+                .iter()
+                .map(|h| h.to_string())
+                .collect()
+        } else {
+            // Peek at first record to determine column count
+            let mut records = reader.records();
+            if let Some(first_record) = records.next() {
+                let record =
+                    first_record.map_err(|e| Error::IoError(format!("CSV read error: {}", e)))?;
+                (0..record.len()).map(|i| format!("column_{}", i)).collect()
+            } else {
+                return Ok(df); // Empty file
+            }
+        };
+
+        // Collect data for each column
+        let mut columns_data: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+        for header in &headers {
+            columns_data.insert(header.clone(), Vec::new());
+        }
+
+        // Process records
+        for result in reader.records() {
+            let record = result.map_err(|e| Error::IoError(format!("CSV read error: {}", e)))?;
+            for (i, header) in headers.iter().enumerate() {
+                let value = if i < record.len() {
+                    record[i].to_string()
+                } else {
+                    String::new()
+                };
+                columns_data.get_mut(header).unwrap().push(value);
+            }
+        }
+
+        // Add columns to DataFrame
+        for header in headers {
+            if let Some(values) = columns_data.remove(&header) {
+                let series = crate::series::Series::new(values, Some(header.clone()))?;
+                df.add_column(header, series)?;
+            }
+        }
+
+        Ok(df)
     }
 
     /// Get the number of columns in the DataFrame

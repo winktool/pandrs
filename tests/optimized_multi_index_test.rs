@@ -2,18 +2,19 @@ use pandrs::error::Result;
 use pandrs::{Column, OptimizedDataFrame, StringColumn};
 
 #[test]
+#[allow(clippy::result_large_err)]
 fn test_optimized_multi_index_simulation() -> Result<()> {
     // Simulate multi-index in OptimizedDataFrame
     // This is a test until actual multi-index functionality is implemented
     let mut df = OptimizedDataFrame::new();
 
     // Create multiple index columns
-    let level1 = vec!["A", "A", "B", "B"]
+    let level1 = ["A", "A", "B", "B"]
         .iter()
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
-    let level2 = vec!["1", "2", "2", "3"]
+    let level2 = ["1", "2", "2", "3"]
         .iter()
         .map(|s| s.to_string())
         .collect::<Vec<String>>();

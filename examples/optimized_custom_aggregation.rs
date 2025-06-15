@@ -1,6 +1,7 @@
 use pandrs::error::Result;
 use pandrs::optimized::OptimizedDataFrame;
 
+#[allow(clippy::result_large_err)]
 fn main() -> Result<()> {
     println!("PandRS Custom Aggregation Example");
     println!("=================================");
@@ -9,7 +10,7 @@ fn main() -> Result<()> {
     let mut df = OptimizedDataFrame::new();
 
     // Add columns
-    let categories: Vec<String> = vec!["A", "B", "A", "B", "A", "C", "B", "C", "C", "A"]
+    let categories: Vec<String> = ["A", "B", "A", "B", "A", "C", "B", "C", "C", "A"]
         .iter()
         .map(|s| s.to_string())
         .collect();

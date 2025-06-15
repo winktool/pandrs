@@ -3,13 +3,14 @@ use pandrs::{DataFrame, Series};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+#[allow(clippy::result_large_err)]
 fn main() -> Result<()> {
     println!("=== Benchmark with One Million Rows ===\n");
 
     // Benchmark function
     fn bench<F>(name: &str, f: F) -> Duration
     where
-        F: FnOnce() -> (),
+        F: FnOnce(),
     {
         println!("Running: {}", name);
         let start = Instant::now();

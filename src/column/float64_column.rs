@@ -1,8 +1,8 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use crate::column::common::{Column, ColumnTrait, ColumnType};
-use crate::error::{Error, Result};
+use crate::core::column::{Column, ColumnTrait, ColumnType};
+use crate::core::error::{Error, Result};
 
 /// Structure representing a Float64 column
 #[derive(Debug, Clone)]
@@ -54,6 +54,11 @@ impl Float64Column {
     /// Get the name
     pub fn get_name(&self) -> Option<&str> {
         self.name.as_deref()
+    }
+
+    /// Get a reference to the underlying data (for testing and demonstration)
+    pub fn data(&self) -> &[f64] {
+        &self.data
     }
 
     /// Get data at the specified index

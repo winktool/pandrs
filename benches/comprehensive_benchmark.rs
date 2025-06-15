@@ -4,6 +4,7 @@ use pandrs::optimized::jit::*;
 use pandrs::optimized::OptimizedDataFrame;
 use std::time::Duration;
 
+#[allow(clippy::result_large_err)]
 fn create_test_dataframe(size: usize) -> Result<OptimizedDataFrame> {
     let mut df = OptimizedDataFrame::new();
 
@@ -67,18 +68,9 @@ fn benchmark_aggregation_operations(c: &mut Criterion) {
         b.iter(|| black_box(df.sum("value").unwrap()));
     });
 
-    group.bench_function("sum_with_jit_config", |b| {
-        let config = ParallelConfig::default();
-        b.iter(|| black_box(df.sum_with_config("value", Some(config.clone())).unwrap()));
-    });
-
+    // JIT config not available, using standard operations
     group.bench_function("mean_standard", |b| {
         b.iter(|| black_box(df.mean("value").unwrap()));
-    });
-
-    group.bench_function("mean_with_jit_config", |b| {
-        let config = ParallelConfig::default();
-        b.iter(|| black_box(df.mean_with_config("value", Some(config.clone())).unwrap()));
     });
 
     group.bench_function("max_standard", |b| {
@@ -154,7 +146,8 @@ fn benchmark_string_operations(c: &mut Criterion) {
     group.bench_function("string_column_creation", |b| {
         b.iter(|| {
             let mut df = OptimizedDataFrame::new();
-            black_box(df.add_string_column("test", string_data.clone()).unwrap());
+            df.add_string_column("test", string_data.clone()).unwrap();
+            black_box(())
         });
     });
 
@@ -200,7 +193,13 @@ fn benchmark_filter_operations(c: &mut Criterion) {
                 // Filter rows where value > 500
                 let int_col = df.get_int_column("value").unwrap();
                 let mask: Vec<bool> = (0..df.row_count())
-                    .map(|i| int_col.get(i).unwrap_or(None).unwrap_or(0) > 500)
+                    .map(|i| {
+                        if let Some(Some(val)) = int_col.get(i) {
+                            *val > 500
+                        } else {
+                            false
+                        }
+                    })
                     .collect();
                 black_box(mask);
             });

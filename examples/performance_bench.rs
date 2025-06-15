@@ -2,13 +2,14 @@ use pandrs::{DataFrame, PandRSError, Series};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+#[allow(clippy::result_large_err)]
 fn main() -> Result<(), PandRSError> {
     println!("=== PandRS Performance Benchmark ===\n");
 
     // Benchmark function
     fn bench<F>(name: &str, f: F) -> Duration
     where
-        F: FnOnce() -> (),
+        F: FnOnce(),
     {
         println!("Running: {}", name);
         let start = Instant::now();
