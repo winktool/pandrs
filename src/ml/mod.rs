@@ -1,10 +1,10 @@
 //! Machine Learning Module
 //!
-//! This module provides machine learning functionality for data analysis.
-//! It includes preprocessing, model training/evaluation, dimensionality reduction,
-//! clustering, and anomaly detection algorithms.
+//! This module provides comprehensive machine learning functionality including
+//! preprocessing, model training/evaluation, dimensionality reduction, clustering,
+//! anomaly detection, automated feature engineering, model selection, and AutoML.
 
-// Feature modules
+// Core ML modules
 pub mod anomaly;
 pub mod clustering;
 pub mod dimension;
@@ -14,6 +14,15 @@ pub mod pipeline;
 pub mod pipeline_extended;
 pub mod preprocessing;
 
+// Advanced ML capabilities
+pub mod automl;
+pub mod feature_engineering;
+pub mod model_selection;
+pub mod sklearn_compat;
+
+// Model serving and deployment
+pub mod serving;
+
 // GPU-accelerated ML functionality (conditionally compiled)
 #[cfg(feature = "cuda")]
 pub mod gpu;
@@ -22,8 +31,8 @@ pub mod gpu;
 pub mod backward_compat;
 
 // Re-export public types and functions
+use crate::core::error::{Error, Result};
 use crate::dataframe::DataFrame;
-use crate::error::{Error, Result};
 use crate::optimized::OptimizedDataFrame;
 use std::collections::HashMap;
 
@@ -82,3 +91,29 @@ pub use pipeline_compat::{Pipeline as PipelineCompat, Transformer};
 // Re-export GPU-accelerated ML functionality when CUDA is enabled
 #[cfg(feature = "cuda")]
 pub use gpu::{GpuKMeans, GpuModelParams, GpuPCA, GpuTSNE};
+
+// Re-export advanced ML capabilities
+pub use automl::{AutoML, AutoMLConfig, AutoMLResult, ModelResult, ModelSearchSpace, TaskType};
+
+pub use feature_engineering::{
+    AggregationFunction, AutoFeatureEngineer, FeatureScaler, FeatureSelectionMethod,
+    MinMaxScaler as MLMinMaxScaler, ScalingMethod, StandardScaler as MLStandardScaler,
+};
+
+pub use model_selection::{
+    CrossValidationStrategy, GridSearchCV, ParameterDistribution, RandomizedSearchCV,
+    ScoreFunction, Scorer, SearchResultEntry, SearchResults, SelectKBest,
+};
+
+pub use sklearn_compat::{
+    MinMaxScalerCompat, Pipeline as SklearnPipeline, PipelineStep, SklearnEstimator,
+    SklearnPredictor, SklearnTransformer, StandardScalerCompat,
+};
+
+// Re-export model serving capabilities
+pub use serving::{
+    BatchPredictionRequest, BatchPredictionResponse, DeploymentConfig, DeploymentMetrics,
+    DeploymentStatus, HealthCheckConfig, HealthStatus, ModelInfo, ModelMetadata, ModelServer,
+    ModelServing, ModelServingFactory, MonitoringConfig, PredictionRequest, PredictionResponse,
+    ResourceConfig, ScalingConfig, ServerConfig,
+};

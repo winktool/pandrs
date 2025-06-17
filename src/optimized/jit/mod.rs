@@ -21,8 +21,7 @@ pub mod performance_monitor;
 pub mod types;
 
 // Integration modules
-// TODO: Fix complex recursive trait bounds for JIT DataFrame integration
-// pub mod dataframe_integration;
+pub mod dataframe_integration;
 
 // Re-export core types
 pub use config::{JITConfig, ParallelConfig, SIMDConfig};
@@ -46,14 +45,13 @@ pub use simd_column_ops::{
 // Re-export enhanced types
 pub use adaptive_optimizer::{AdaptiveOptimizer, OptimizationReport};
 pub use cache::{CachedFunction, FunctionId, JitFunctionCache};
+pub use dataframe_integration::{JitDataFrameOps, JitOptimizedDataFrame};
 pub use expression_tree::{BinaryOperator, ExpressionNode, ExpressionTree, UnaryOperator};
 pub use jit_core::{JitFunction, JitStats};
 pub use performance_monitor::{
     FunctionPerformanceMetrics, JitPerformanceMonitor, OptimizationSuggestion,
 };
 pub use types::{JitNumeric, NumericValue, TypedVector};
-// TODO: Re-enable after fixing trait bounds
-// pub use dataframe_integration::{JitDataFrameOps, JitOptimizedDataFrame};
 
 /// Re-export commonly used types
 pub use rayon::prelude::*;

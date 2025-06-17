@@ -20,6 +20,16 @@ pub mod core;
 // Compute module for computation functionality
 pub mod compute;
 
+// Arrow integration module for ecosystem compatibility
+#[cfg(feature = "distributed")]
+pub mod arrow_integration;
+
+// Data connectors for databases and cloud storage
+pub mod connectors;
+
+// Configuration management for secure settings and credentials
+pub mod config;
+
 // Storage module for data storage engines
 pub mod storage;
 
@@ -41,6 +51,7 @@ pub mod series;
 pub mod stats;
 pub mod streaming;
 pub mod temporal;
+pub mod time_series;
 pub mod vis;
 
 // Internal utilities and compatibility layers
@@ -65,6 +76,18 @@ pub use core::data_value::{DataValue, DataValueExt, DisplayExt};
 pub use core::error::{Error, Result};
 pub use core::index::{Index as CoreIndex, IndexTrait};
 pub use core::multi_index::MultiIndex as CoreMultiIndex;
+
+// Configuration management exports
+pub use config::credentials::{
+    CredentialBuilder, CredentialMetadata, CredentialStore, CredentialStoreConfig, CredentialType,
+    EncryptedCredential,
+};
+pub use config::{
+    AccessControlConfig, AuditConfig, AwsConfig, AzureConfig, CachingConfig, CloudConfig,
+    ConnectionPoolConfig, DatabaseConfig, EncryptionConfig, GcpConfig, GlobalCloudConfig,
+    JitConfig, LogRotationConfig, LoggingConfig, MemoryConfig, PandRSConfig, PerformanceConfig,
+    SecurityConfig, SslConfig, ThreadingConfig, TimeoutConfig,
+};
 
 // Re-export legacy types (for backward compatibility)
 pub use column::{BooleanColumn, Column, ColumnType, Float64Column, Int64Column, StringColumn};
@@ -115,6 +138,18 @@ pub use large::{ChunkedDataFrame, DiskBasedDataFrame, DiskBasedOptimizedDataFram
 pub use streaming::{
     AggregationType, DataStream, MetricType, RealTimeAnalytics, StreamAggregator, StreamConfig,
     StreamConnector, StreamProcessor, StreamRecord,
+};
+
+// Time series analysis and forecasting
+pub use time_series::{
+    ArimaForecaster, AugmentedDickeyFullerTest, AutocorrelationAnalysis, ChangePointDetection,
+    DateTimeIndex, DecompositionMethod, DecompositionResult, Differencing,
+    ExponentialSmoothingForecaster, FeatureSet, ForecastMetrics, ForecastResult, Forecaster,
+    Frequency, KwiatkowskiPhillipsSchmidtShinTest, LinearTrendForecaster, MissingValueStrategy,
+    Normalization, OutlierDetection, SeasonalDecomposition, SeasonalTest, SeasonalityAnalysis,
+    SimpleMovingAverageForecaster, StationarityTest, StatisticalFeatures, TimePoint, TimeSeries,
+    TimeSeriesBuilder, TimeSeriesFeatureExtractor, TimeSeriesPreprocessor, TimeSeriesStats,
+    TrendAnalysis, WhiteNoiseTest, WindowFeatures,
 };
 
 // WebAssembly and web visualization (when enabled)
