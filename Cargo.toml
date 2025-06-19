@@ -46,7 +46,7 @@ calamine = { version = "0.23.1", optional = true }  # For Excel reading
 simple_excel_writer = { version = "0.2.0", optional = true }  # For Excel writing
 # SQL support
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "mysql", "postgres", "sqlite"], optional = true }
-rusqlite = "0.30.0"  # SQLite support
+rusqlite = { version = "0.30.0", optional = true }  # SQLite support
 
 # WebAssembly support (optional)
 wasm-bindgen = { version = "0.2.91", optional = true }  # WebAssembly bindings
